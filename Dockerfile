@@ -4,35 +4,46 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
-# Prevent Python from generating .pyc files
+# Don’t generate .pyc files and enable unbuffered output
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# Default port for Railway/Cloud Run
+ENV PORT=8080
 
-# Install system dependencies including OpenGL libs for rembg/cv2
-RUN apt-get update && apt-get install -y \
+# Install system dependencies including OpenGL / XCB libs for rembg/cv2
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libffi-dev \
     build-essential \
-    libgl1 \
+    libffi-dev \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
     libxext6 \
-    && rm -rf /var/lib/apt/lists/*
+    libxfixes3 \
+    libxshmfence1 \
+    libxxf86vm1 \
+    libxcb-dri3-0 \
+    libxcb-glx0 \
+    libxcb-present0 \
+    libxcb-randr0 \
+    libxcb-shm0 \
+    libxcb-sync1 \
+    libxcb-xfixes0 \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip \
  && pip install --no-cache-dir -r requirements.txt
 
-# Copy app files
+# Copy application code
 COPY . .
 
-# If you're deploying to Cloud Run (or Railway), make sure you use the port env var:
-ENV PORT=8080
-
-# Expose the port
+# Expose the port (Railway will set $PORT automatically)
 EXPOSE 8080
 
-# Run the app with Gunicorn (replace main:app if different)
+# Start the app with Gunicorn
 CMD ["gunicorn", "-b", "0.0.0.0:8080", "main:app"]
+
