@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Update Account Information{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Update User Details</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Update Form -->
+    <form action="{{ url_for('boundary.update_account_detail') }}" method="POST" enctype="multipart/form-data">
+        <!-- Profile Picture -->
+        <div class="form-group">
+            <label for="profile_picture">Profile Picture:</label>
+            <input type="file" id="profile_picture" name="profile_picture" class="form-control">
+            {% if user_info.profile_picture %}
+                <img src="{{ url_for('boundary.get_profile_picture', username=user_info.username) }}" alt="Profile Picture" class="img-thumbnail mt-2" width="150">
+            {% endif %}
+        </div>
+
+        <!-- First Name -->
+        <div class="form-group">
+            <label for="name">First Name:</label>
+            <input type="text" id="name" name="name" class="form-control" value="{{ user_info.name }}" required>
+        </div>
+
+        <!-- Last Name -->
+        <div class="form-group">
+            <label for="surname">Last Name:</label>
+            <input type="text" id="surname" name="surname" class="form-control" value="{{ user_info.surname }}" required>
+        </div>
+
+        <!-- Date of Birth -->
+        <div class="form-group">
+            <label for="date_of_birth">Date of Birth:</label>
+            <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" value="{{ user_info.date_of_birth }}">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a href="{{ url_for('boundary.accDetails') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

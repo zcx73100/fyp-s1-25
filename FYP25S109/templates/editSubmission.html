@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="material-view-container">
+  <h2>Edit Your Submission</h2>
+
+  <div class="material-frame mt-4">
+    {% if file_extension == "pdf" %}
+      <iframe src="data:application/pdf;base64,{{ file_base64 }}"
+              width="100%" height="600px" frameborder="0"></iframe>
+
+    {% elif file_extension in ["txt", "md"] %}
+      <div class="text-content">
+        <pre>{{ text_content }}</pre>
+      </div>
+
+    {% elif file_extension in ["doc", "docx", "ppt", "pptx"] %}
+      <p class="mb-2">📄 This file type cannot be previewed.</p>
+      {% if submission.file_id %}
+        <a href="{{ url_for('boundary.student_download_submission', file_id=submission.file_id) }}"
+           class="btn btn-outline-primary mt-2">⬇️ Download Current File</a>
+      {% endif %}
+    {% endif %}
+
+    {% if submission.video_id %}
+      <div class="video-preview mt-4">
+        <h4>🎬 Current Submitted Video</h4>
+        <video width="100%" controls class="rounded shadow">
+          <source src="{{ url_for('boundary.stream_video', video_id=submission.video_id) }}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    {% elif not file_extension %}
+      <p class="text-muted">No previewable file or video currently submitted.</p>
+    {% endif %}
+  </div>
+
+  <!-- 📤 Resubmit Form -->
+  <div class="submission-form mt-5">
+    <form action="{{ url_for('boundary.submit_assignment', assignment_id=submission.assignment_id, filename=filename or 'resubmission') }}"
+          method="POST" enctype="multipart/form-data">
+
+      <label for="file" class="form-label">📎 Upload New File:</label>
+      <input type="file" name="file" class="form-control mb-3">
+
+      <input type="hidden" name="student_username" value="{{ session['username'] }}">
+
+      <button type="submit" class="btn btn-primary">📤 Submit New File</button>
+    </form>
+
+    <form action="{{ url_for('boundary.generate_video_redirect') }}" method="GET" class="mt-3">
+      <input type="hidden" name="assignment_id" value="{{ submission.assignment_id }}">
+      <input type="hidden" name="classroom_id" value="{{ submission.classroom_id }}">
+      <input type="hidden" name="source" value="submission">
+      <button type="submit" class="btn btn-outline-secondary">🎥 Generate New Video</button>
+    </form>
+  </div>
+
+  <div class="buttons mt-4">
+    <a href="javascript:history.back();" class="btn btn-secondary">⬅️ Go Back</a>
+  </div>
+</div>
+
+<style>
+.material-view-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.material-frame {
+  margin: 20px auto;
+  width: 85%;
+  min-height: 300px;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  background-color: #fff;
+}
+
+.video-preview video {
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.text-content {
+  text-align: left;
+  padding: 20px;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+.submission-form {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f2f2f2;
+  border-radius: 10px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  margin: 5px;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-outline-primary,
+.btn-outline-secondary {
+  border: 1px solid;
+  background-color: transparent;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  color: white;
+}
+</style>
+
+{% endblock %}

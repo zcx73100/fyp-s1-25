@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}My Videos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">My Saved Videos</h1>
+    <!-- 🔍 Search Form -->
+    <form method="GET" action="{{ url_for('boundary.my_videos') }}" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Search videos by title..." value="{{ request.args.get('search', '') }}">
+            <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+    </form>
+
+    {% if videos %}
+        <div class="row">
+            {% for video in videos %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <video class="card-img-top" controls>
+                            <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id) }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="card-body">
+                            <!-- Video Title with Edit Toggle -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="card-title mb-0" id="title-{{ video.video_id }}">{{ video.title }}</h5>
+                                <button class="btn btn-sm btn-outline-primary edit-title-btn" data-video-id="{{ video.video_id }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Edit Title Form (Initially Hidden) -->
+                            <form method="POST" action="{{ url_for('boundary.update_video_title', video_id=video.video_id) }}" 
+                                  class="edit-title-form" id="edit-form-{{ video.video_id }}" style="display: none;">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="new_title" class="form-control form-control-sm" 
+                                           value="{{ video.title }}" required>
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary cancel-edit-btn" 
+                                            data-video-id="{{ video.video_id }}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </form>
+
+                            <p class="card-text">{{ video.description }}</p>
+                            <small class="text-muted d-block mb-2">Uploaded on {{ video.created_at.strftime('%B %d, %Y') }}</small>
+
+                            {% if role == 'Admin' %}
+                                <!-- Publish Button (Visible for admins) -->
+                                {% if not video.is_published %}
+                                    <form method="POST" action="{{ url_for('boundary.publish_video', video_id=video._id) }}">
+                                        <button type="submit" class="btn btn-success btn-sm">Publish</button>
+                                    </form>
+                                {% else %}
+                                    <span class="badge bg-success">Published</span>
+                                {% endif %}
+                            {% endif %}
+                            
+                            <!-- 🧹 Delete Button -->
+                            <form method="POST" action="{{ url_for('boundary.delete_generated_video', video_id=video.video_id) }}" onsubmit="return confirm('Are you sure you want to delete this video?');">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            You have not saved any videos yet.
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Toggle edit title form
+    document.querySelectorAll('.edit-title-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const videoId = this.getAttribute('data-video-id');
+            document.getElementById(`title-${videoId}`).style.display = 'none';
+            this.style.display = 'none';
+            document.getElementById(`edit-form-${videoId}`).style.display = 'block';
+        });
+    });
+
+    // Cancel edit
+    document.querySelectorAll('.cancel-edit-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const videoId = this.getAttribute('data-video-id');
+            document.getElementById(`edit-form-${videoId}`).style.display = 'none';
+            document.getElementById(`title-${videoId}`).style.display = 'block';
+            document.querySelector(`.edit-title-btn[data-video-id="${videoId}"]`).style.display = 'block';
+        });
+    });
+
+    async function deleteVideo(videoId) {
+        const response = await fetch(`/delete_generated_video/${videoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        return await response.json();
+    }
+</script>
+{% endblock %}

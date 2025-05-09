@@ -1,0 +1,107 @@
+{%extends "base.html" %}
+{% block title %}Change Assistant{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Change Your Assistant</h2>
+    <h4 class="text-center mb-5">Choose your new assistant from the list below!</h4>
+    <div class="row">
+        {% for avatar in avatars %}
+        <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+            <div class="avatar-card text-center position-relative">
+                <!-- Avatar Image (always visible) -->
+                <div class="avatar-image-container">
+                    <img
+                        src="data:image/png;base64,{{ avatar.image_data }}"
+                        alt="{{ avatar.avatarname }}"
+                        class="avatar-showcase-img img-fluid"
+                    />
+                    <!-- Avatar Video (shown on hover) -->
+                    {% if avatar.video_id %}
+                    <div class="avatar-video-container">
+                        <video class="avatar-showcase-video" controls>
+                            <source src="{{ url_for('boundary.serve_published_video', file_id=avatar.video_id) }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                    {% else %}
+                    <div class="no-video-placeholder">
+                        <p class="text-white
+">No video available</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <!-- Avatar Name and Button -->
+                <div class="avatar-info p-2">
+                    <h5 class="mt-2">{{ avatar.avatarname }}</h5>
+                    <button class="btn btn-primary mt-2 select-avatar-btn"
+                            data-avatar-id="{{ avatar.file_id }}">
+                        Select
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Form element (we'll create it dynamically)
+        let avatarForm = document.createElement('form');
+        avatarForm.id = 'avatarSelectionForm';
+        avatarForm.method = 'POST';
+        avatarForm.action = "{{ url_for('boundary.change_assistant') }}";
+        document.body.appendChild(avatarForm);
+    
+        // Hidden input for avatar ID
+        let avatarIdInput = document.createElement('input');
+        avatarIdInput.type = 'hidden';
+        avatarIdInput.name = 'avatar_id';
+        avatarIdInput.id = 'selectedAvatarId';
+        avatarForm.appendChild(avatarIdInput);
+    
+        // Handle avatar selection
+        const selectButtons = document.querySelectorAll('.select-avatar-btn');
+        selectButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all buttons
+                selectButtons.forEach(btn => {
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-primary');
+                });
+                
+                // Add active class to selected button
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-success');
+                
+                // Set the selected avatar ID
+                document.getElementById('selectedAvatarId').value = this.dataset.avatarId;
+                
+                // Submit the form
+                avatarForm.submit();
+            });
+        });
+    
+        // Add hover effects for avatar cards
+        const avatarCards = document.querySelectorAll('.avatar-card');
+        avatarCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const video = this.querySelector('video');
+                if (video) {
+                    video.play().catch(e => console.log("Video play failed:", e));
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const video = this.querySelector('video');
+                if (video) {
+                    video.pause();
+                    video.currentTime = 0;
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

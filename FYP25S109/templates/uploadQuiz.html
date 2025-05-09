@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="title">Create a New MCQ Quiz</h2>
+
+<form action="{{ url_for('boundary.upload_quiz', classroom_id=classroom_id) }}" method="POST" class="quiz-form" enctype="multipart/form-data">
+    <label for="quiz_title">Quiz Title:</label>
+    <input type="text" name="quiz_title" class="input-field" required>
+
+    <label for="description">Description:</label>
+    <textarea name="quiz_description" class="textarea-field"></textarea>
+
+    <div class="questions-wrapper">
+        <div id="questions-container">
+            <div class="question">
+                <label for="question_1">Question 1:</label>
+                <input type="text" name="question_1" class="input-field" required>
+
+                <label>Choices:</label>
+                <input type="text" name="option_1_1" class="input-field" required>
+                <input type="text" name="option_1_2" class="input-field" required>
+                <input type="text" name="option_1_3" class="input-field" required>
+                <input type="text" name="option_1_4" class="input-field" required>
+
+                <label for="correct_answer_1">Correct Answer:</label>
+                <select name="correct_answer_1" class="select-field">
+                    <option value="1">Choice 1</option>
+                    <option value="2">Choice 2</option>
+                    <option value="3">Choice 3</option>
+                    <option value="4">Choice 4</option>
+                </select>
+
+                <label for="image_1">Upload Image:</label>
+                <input type="file" name="image_1" class="input-field" accept="image/*">
+
+                <button type="button" class="btn delete-btn" onclick="this.closest('.question').remove()">Delete Question</button>
+            </div>
+        </div>
+    </div>
+
+    <button type="button" id="add-question" class="btn">Add Question</button>
+    <button type="submit" class="btn submit-btn">Create Quiz</button>
+</form>
+
+<script>
+    function renumberQuestions() {
+        const questions = document.querySelectorAll('#questions-container .question');
+        questions.forEach((question, index) => {
+            const qNum = index + 1;
+
+            // Update label
+            const label = question.querySelector('label');
+            if (label) label.textContent = `Question ${qNum}:`;
+
+            // Update input name attributes
+            question.querySelectorAll('input, select').forEach(input => {
+                if (input.name.startsWith("question_")) {
+                    input.name = `question_${qNum}`;
+                } else if (input.name.startsWith("option_")) {
+                    const optionIndex = input.name.split('_')[2]; // 1, 2, 3, 4
+                    input.name = `option_${qNum}_${optionIndex}`;
+                } else if (input.name.startsWith("correct_answer_")) {
+                    input.name = `correct_answer_${qNum}`;
+                } else if (input.name.startsWith("image_")) {
+                    input.name = `image_${qNum}`;
+                }
+            });
+        });
+    }
+
+    document.getElementById("add-question").addEventListener("click", function () {
+        let container = document.getElementById("questions-container");
+        let index = container.getElementsByClassName("question").length + 1;
+        let questionDiv = document.createElement("div");
+        questionDiv.className = "question";
+        questionDiv.innerHTML = `
+            <label>Question ${index}:</label>
+            <input type="text" name="question_${index}" class="input-field" required>
+            <label>Choices:</label>
+            <input type="text" name="option_${index}_1" class="input-field" required>
+            <input type="text" name="option_${index}_2" class="input-field" required>
+            <input type="text" name="option_${index}_3" class="input-field" required>
+            <input type="text" name="option_${index}_4" class="input-field" required>
+            <label>Correct Answer:</label>
+            <select name="correct_answer_${index}" class="select-field">
+                <option value="1">Choice 1</option>
+                <option value="2">Choice 2</option>
+                <option value="3">Choice 3</option>
+                <option value="4">Choice 4</option>
+            </select>
+            <label>Upload Image:</label>
+            <input type="file" name="image_${index}" class="input-field" accept="image/*">
+            <button type="button" class="btn delete-btn">Delete Question</button>
+        `;
+
+        // Add delete functionality
+        questionDiv.querySelector('.delete-btn').addEventListener("click", function () {
+            questionDiv.remove();
+            renumberQuestions(); // Recalculate question numbers
+        });
+
+        container.appendChild(questionDiv);
+    });
+
+    // Initial delete button for hardcoded question
+    document.querySelector(".question .delete-btn")?.addEventListener("click", function () {
+        this.closest(".question").remove();
+        renumberQuestions();
+    });
+</script>
+
+
+<style>
+    .title {
+        font-size: 1.8rem;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .quiz-form {
+        max-width: 100%;
+        margin: auto;
+        padding: 20px;
+        border-radius: 10px;
+        background-color: #f4f4f4;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    label {
+        margin: 8px 0;
+        display: block;
+        font-weight: bold;
+        color: #555;
+    }
+
+    .input-field, .textarea-field, .select-field {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0 15px 0;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+
+    .textarea-field {
+        height: 100px;
+        resize: vertical;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        margin: 5px;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        background-color: #007bff;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .btn:hover {
+        background-color: #0056b3;
+    }
+
+    .submit-btn {
+        background-color: #28a745;
+    }
+
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+
+    .delete-btn {
+        background-color: #dc3545;
+    }
+
+    .delete-btn:hover {
+        background-color: #c82333;
+    }
+
+    .questions-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+
+    #questions-container {
+        display: flex;
+        gap: 20px;
+    }
+
+    .question {
+        flex: 0 0 auto;
+        width: 400px;
+        padding: 15px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        white-space: normal;
+    }
+
+    .question label {
+        margin-top: 5px;
+    }
+
+    .question input,
+    .question select {
+        margin: 5px;
+        min-width: 200px;
+    }
+</style>
+
+{% endblock %}

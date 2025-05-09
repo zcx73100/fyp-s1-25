@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create MCQ Quiz</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script>
+        function addQuestion() {
+            let questionIndex = document.querySelectorAll('.question').length;
+            let questionDiv = document.createElement('div');
+            questionDiv.classList.add('question');
+            
+            questionDiv.innerHTML = `
+                <label>Question ${questionIndex + 1}:</label>
+                <input type="text" name="questions[${questionIndex}][text]" required>
+                <br>
+                <label>Choices:</label>
+                <br>
+                <input type="text" name="questions[${questionIndex}][choices][]" required>
+                <input type="text" name="questions[${questionIndex}][choices][]" required>
+                <input type="text" name="questions[${questionIndex}][choices][]" required>
+                <input type="text" name="questions[${questionIndex}][choices][]" required>
+                <br>
+                <label>Correct Answer:</label>
+                <select name="questions[${questionIndex}][correct]">
+                    <option value="0">Choice 1</option>
+                    <option value="1">Choice 2</option>
+                    <option value="2">Choice 3</option>
+                    <option value="3">Choice 4</option>
+                </select>
+                <br><br>
+            `;
+            document.getElementById('questions-container').appendChild(questionDiv);
+        }
+    </script>
+</head>
+<body>
+    <h2>Create a New MCQ Quiz</h2>
+    <form action="{{ url_for('boundary.upload_quiz', classroom_name=classroom_name) }}" method="POST">
+        <label>Quiz Title:</label>
+        <input type="text" name="title" required>
+        <br>
+        <label>Description:</label>
+        <textarea name="description" required></textarea>
+        <br>
+        
+        <div id="questions-container"></div>
+        <button type="button" onclick="addQuestion()">Add Question</button>
+        <br><br>
+        <button type="submit" class="btn btn-primary">Create Quiz</button>
+    </form>
+</body>
+</html>

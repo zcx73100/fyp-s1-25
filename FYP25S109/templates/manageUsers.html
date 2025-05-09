@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<h2>Manage Users</h2>
+<!-- ✅ Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+{% endwith %}
+<!-- Search Form -->
+<form method="get" action="{{ url_for('boundary.search_user') }}">
+    <input type="text" name="query" placeholder="Search by username or email" required>
+    <button type="submit">Search</button>
+</form>
+
+<!-- User Table -->
+<table border="1" width="100%" style="margin-top: 20px; border-collapse: collapse;">
+    <tr>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+    {% for user in users %}
+    <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.role }}</td>
+        <td>{{ user.status }}</td>
+
+        <td>
+            {% if user.username != session['username'] %}
+                {% if user.status == 'suspended' %}
+                <form method="post" action="{{ url_for('boundary.activate_user', username=user.username) }}" style="display:inline;">
+                    <button type="submit" class="activate-btn">Activate</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('boundary.suspend_user', username=user.username) }}" style="display:inline;">
+                    <button type="submit" class="suspend-btn">Suspend</button>
+                </form>
+                {% endif %}
+                
+                <form method="post" action="{{ url_for('boundary.delete_user', username=user.username) }}" style="display:inline;">
+                    <button type="submit" class="delete-btn">Delete</button>
+                </form>
+            {% else %}
+                <span style="color: gray;">(You)</span>
+            {% endif %}
+        </td>
+        
+        
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

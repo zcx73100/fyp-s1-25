@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Discussion Forum</h2>
+
+    <!-- Add Discussion Room -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Create a Discussion Room</h4>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('boundary.create_discussion_room', classroom_id=classroom_id) }}" method="POST">
+                <input type="hidden" name="classroom_id" value="{{ classroom_id }}">
+                <div class="form-group">
+                    <label for="discussion_room_name">Room Topic</label>
+                    <input type="text" id="discussion_room_name" name="discussion_room_name" class="form-control" placeholder="Enter room topic" required>
+                </div>
+                <div class="form-group mt-2">
+                    <label for="discussion_room_description">Room Description</label>
+                    <input type="text" id="discussion_room_description" name="discussion_room_description" class="form-control" placeholder="Enter room description" required>
+                </div>
+                <input type="hidden" name="created_by" value="{{ session['username'] }}">
+                <button type="submit" class="btn btn-primary mt-3">Add Room</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Discussion Room -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Search Discussion Rooms</h4>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('boundary.search_discussion_room') }}" method="GET">
+                <div class="input-group">
+                    <input type="text" name="query" class="form-control" placeholder="Search by topic">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-secondary">Search</button>
+                        <a href="{{ url_for('boundary.view_discussion_room_list', classroom_id=classroom_id) }}" class="btn btn-outline-secondary">Reset</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Display Discussion Rooms -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Available Discussion Rooms</h4>
+        </div>
+        <div class="card-body">
+            {% if discussion_rooms %}
+                <ul class="list-group">
+                    {% for room in discussion_rooms %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <text hidden = "true">{{room._id }}</text>
+                                    <strong>{{ room.discussion_room_name }}</strong>
+                                    <p class="mb-0 text-muted" hidden="true">{{ room.discussion_room_description }}</p>
+                                    <small class="text-muted" hidden="true">
+                                        Created by: {{ room.created_by }} | 
+                                        {{ room.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <form action="{{ url_for('boundary.access_room', discussion_room_id=room._id, classroom_id=classroom_id) }}" method="POST">
+                                        <input type="hidden" name="discussion_room_id" value="{{ room._id }}">
+                                        <input type="hidden" name="classroom_id" value="{{ classroom_id }}">
+                                        <button type="submit" class="btn btn-primary btn-sm">Access</button>
+                                    </form>
+                                    {% if room.created_by == session['username'] %}
+                                        <a href="{{ url_for('boundary.update_discussion_room', discussion_room_id=room._id) }}" class="btn btn-warning btn-sm">Edit</a>
+                                        <form action="{{ url_for('boundary.delete_discussion_room', discussion_room_id=room._id, classroom_id=classroom_id) }}" method="POST" style="display: inline;">
+                                            <input type="hidden" name="discussion_room_id" value="{{ room._id }}">
+                                            <input type="hidden" name="classroom_id" value="{{ classroom_id }}">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">No discussion rooms available.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

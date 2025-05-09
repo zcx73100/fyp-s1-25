@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Students{% endblock %}
+
+{% block content %}
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f6f8;
+        padding: 20px;
+    }
+
+    h1, h2 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    .styled-table {
+        width: 95%;
+        margin: 0 auto 30px auto;
+        border-collapse: collapse;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: #ffffff;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .styled-table th,
+    .styled-table td {
+        padding: 12px 15px;
+        text-align: left;
+    }
+
+    .styled-table th {
+        background-color: #007bff;
+        color: #ffffff;
+    }
+
+    .styled-table tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    .styled-table tr:hover {
+        background-color: #e9f3ff;
+    }
+
+    button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 2px;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    form {
+        display: inline;
+    }
+
+    input[type="text"] {
+        padding: 10px;
+        width: 300px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin-right: 10px;
+    }
+
+    .alert {
+        width: 90%;
+        margin: 10px auto;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #ffc107;
+        color: #333;
+    }
+
+    .back-button {
+        display: flex;
+        justify-content: center;
+        margin-top: 30px;
+    }
+    .search-form {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 30px;
+    }
+
+    .search-form input[type="text"] {
+        padding: 12px 20px;
+        width: 350px; /* Increased width for better visibility */
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin-right: 10px;
+        font-size: 16px;
+    }
+
+    .search-form button {
+        background-color: #007bff;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .search-form button:hover {
+        background-color: #0056b3;
+    }.search-form {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 30px;
+    }
+
+    .search-form input[type="text"] {
+        padding: 12px 20px;
+        width: 350px; /* Increased width for better visibility */
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin-right: 10px;
+        font-size: 16px;
+    }
+
+    .search-form button {
+        background-color: #007bff;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .search-form button:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<h1>Manage Students</h1>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Search Form -->
+<h2>Search Students</h2>
+<div class="search-form">
+    <form method="get" action="{{ url_for('boundary.search_student', classroom_id=classroom._id, query=query) }}">
+        <input type="hidden" name="classroom" value="{{ classroom.classroom_name }}">
+        <input type="text" name="query" placeholder="Search by username or email" required>
+        <button type="submit">Search</button>
+    </form>
+</div>
+
+<!-- Enrolled Students Table -->
+<h2>{% if session.get('role') == "Student" %}Students in this classroom{% else %}Enrolled Students{% endif %}</h2>
+<table class="styled-table">
+    <tr>
+        <th>Username</th>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        {% if session.get('role') != "Student" %}
+        <th>Actions</th>
+        {% endif %}
+    </tr>
+    {% for student in enrolled_students %}
+    <tr>
+        <td>{{ student.username }}</td>
+        <td>{{ student.name }} {{ student.surname }}</td>
+        <td>{{ student.email }}</td>
+        <td>{{ student.role }}</td>
+        <td>{{ 'Suspended' if student.status == "suspended" else 'Active' }}</td>
+        {% if session.get('role') != "Student" %}
+        <td>
+            {% if student.status != "suspended" %}
+            <form method="post" action="{{ url_for('boundary.suspend_student', username=student.username, classroom_id=classroom._id) }}">
+                <input type="hidden" name="classroom_id" value="{{ classroom._id }}">
+                <input type="hidden" name="username" value="{{ student.username }}">
+                <button type="submit">Suspend</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('boundary.unsuspend_student', username=student.username, classroom_id=classroom._id) }}">
+                <input type="hidden" name="classroom_id" value="{{ classroom._id }}">
+                <input type="hidden" name="username" value="{{ student.username }}">
+                <button type="submit">Activate</button>
+            </form>
+            {% endif %}
+            <form method="get" action="{{ url_for('boundary.view_user_details', username=student.username) }}">
+                <button type="submit">View Details</button>
+            </form>
+            <form method="post" action="{{ url_for('boundary.remove_student', classroom_id=classroom._id) }}" onsubmit="return confirm('Are you sure you want to remove this student from the classroom?');">
+                <input type="hidden" name="classroom_id" value="{{ classroom._id }}">
+                <input type="hidden" name="username" value="{{ student.username }}">
+                <button type="submit">Remove</button>
+            </form>
+        </td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- Unenrolled Students Table -->
+{% if session.get('role') != "Student" %}
+<h2>Unenrolled Students</h2>
+<table class="styled-table">
+    <tr>
+        <th>Username</th>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Actions</th>
+    </tr>
+    {% for student in unenrolled_students %}
+    <tr>
+        <td>{{ student.username }}</td>
+        <td>{{ student.name }} {{ student.surname }}</td>
+        <td>{{ student.email }}</td>
+        <td>
+            <form method="post" action="{{ url_for('boundary.enroll_student', classroom_id=classroom._id) }}">
+                <input type="hidden" name="classroom_id" value="{{ classroom._id }}">
+                <input type="hidden" name="username" value="{{ student.username }}">
+                <button type="submit">Enroll</button>
+            </form>
+            <form method="get" action="{{ url_for('boundary.view_user_details', username=student.username) }}">
+                <button type="submit">View Details</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+<!-- Back to Classroom -->
+<div class="back-button">
+    <form method="post" action="{{ url_for('boundary.view_classroom', classroom_id=classroom._id) }}">
+        <button type="submit">Back to Classroom</button>
+    </form>
+</div>
+
+{% endblock %}

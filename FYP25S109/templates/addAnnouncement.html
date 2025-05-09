@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2 class="section-title">📢 Add Announcement</h2>
+    <h3 class="section-subtitle">Classroom: {{ classroom_name }}</h3>
+
+    <form method="POST">
+        <div class="form-group">
+            <label for="title">Title:</label>
+            <input type="text" name="title" id="title" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="content">Content:</label>
+            <textarea name="content" id="content" rows="4" class="form-control" required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-warning">📢 Post Announcement</button>
+        <a href="{{ url_for('boundary.view_classroom', classroom_name=classroom_name,classroom_id=classroom_id) }}" class="btn btn-secondary">⬅ Back to Classroom</a>
+    </form>
+
+    <style>
+        .section-title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        
+        .btn-warning {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+{% endblock %}

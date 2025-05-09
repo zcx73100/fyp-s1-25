@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Upload Material</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('boundary.upload_material') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="classroom_name" value="{{ classroom_name }}">
+        <input type="hidden" name="classroom_id" value="{{ classroom_id }}">
+
+        <div class="mb-3">
+            <label for="title" class="form-label">Material Title:</label>
+            <input type="text" class="form-control" name="title" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Description:</label>
+            <textarea class="form-control" name="description" required></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="file" class="form-label">Choose a File:</label>
+            <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Upload Material</button>
+        <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom_id) }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
