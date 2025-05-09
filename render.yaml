@@ -1,0 +1,13 @@
+# render.yaml
+services:
+  - type: web
+    name: fyp-web-app
+    env: python
+    plan: free
+    rootDir: "FYP-25-S1-09 Mongodb Voice Generate"
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --preload --log-level debug
+    envVars:
+      - key: MONGODB_URI
+        fromEnv: MONGODB_URI
