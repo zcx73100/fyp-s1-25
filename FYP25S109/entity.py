@@ -22,6 +22,8 @@ import base64
 import mimetypes
 from gtts import gTTS
 from gridfs import GridFS
+from rembg import new_session
+rembg_session = new_session("u2net")
 
 def get_fs():
     return GridFS(mongo.db)
@@ -475,11 +477,11 @@ class Avatar:
             if not self.allowed_file(filename):
                 raise ValueError("Invalid image format.")
 
-            # Step 1: Load and convert image
+            # Step 1: Read image file
             image_binary = self.image_file.read()
             image = Image.open(io.BytesIO(image_binary)).convert("RGBA")
 
-            # Step 2: Make image square by padding
+            # Step 2: Pad image to square
             width, height = image.size
             if width != height:
                 delta = abs(width - height)
@@ -488,26 +490,24 @@ class Avatar:
                     padding = (0, delta // 2, 0, delta - delta // 2)
                 else:
                     padding = (delta // 2, 0, delta - delta // 2, 0)
-                image = ImageOps.expand(image, padding, fill=(0, 0, 0, 0))  # transparent padding
+                image = ImageOps.expand(image, padding, fill=(0, 0, 0, 0))
 
-            # Step 3: Resize to 512x512 using high-quality resampling
+            # Step 3: Resize to 512x512
             try:
                 resample = Image.Resampling.BICUBIC
             except AttributeError:
                 resample = Image.BICUBIC
             image = image.resize((512, 512), resample)
 
-            # Step 4: Save to memory buffer
+            # Step 4: Save to memory
             buffer = io.BytesIO()
             image.save(buffer, format="PNG")
             buffer.seek(0)
             raw_image_bytes = buffer.getvalue()
 
-            # Step 5: Try background removal
+            # Step 5: Background removal with fallback
             try:
-                from rembg import remove, new_session
-                session = new_session("u2net")
-                image_no_bg = remove(raw_image_bytes, session=session)
+                image_no_bg = remove(raw_image_bytes, session=rembg_session)
                 logging.info("[rembg] Background removed successfully.")
             except Exception as e:
                 logging.warning(f"[rembg] Failed, using original image: {e}")
@@ -516,10 +516,10 @@ class Avatar:
             # Step 6: Save to GridFS
             gridfs_id = get_fs().put(image_no_bg, filename=filename, content_type="image/png")
 
-            # Step 7: Base64 encode for preview
+            # Step 7: Convert to base64 for preview
             image_base64 = base64.b64encode(image_no_bg).decode("utf-8")
 
-            # Step 8: Insert into DB
+            # Step 8: Store avatar in DB
             avatar_record = {
                 'avatarname': self.avatarname,
                 'username': self.username,
@@ -529,13 +529,13 @@ class Avatar:
             }
 
             result = mongo.db.avatar.insert_one(avatar_record)
-            logging.info(f"[Avatar] Inserted avatar for {self.username} with ID {result.inserted_id}")
+            logging.info(f"[Avatar] Inserted for user '{self.username}', ID: {result.inserted_id}")
+
             return {"success": True, "message": "Avatar uploaded successfully."}
 
         except Exception as e:
             logging.error(f"[Avatar Upload Error] {str(e)}")
             return {"success": False, "message": f"Failed to upload avatar: {str(e)}"}
-
 
     def add_avatar(self, avatarname, username, image_data, file_path):
         try:
