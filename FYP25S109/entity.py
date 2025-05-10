@@ -466,42 +466,51 @@ class Avatar:
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
     def save_image(self):
-        try:
-            if not self.image_file:
-                raise ValueError("No file selected for upload.")
+    try:
+        if not self.image_file:
+            raise ValueError("No file selected for upload.")
 
-            filename = secure_filename(self.image_file.filename)
-            if not self.allowed_file(filename):
-                raise ValueError("Invalid image format.")
+        filename = secure_filename(self.image_file.filename)
+        if not self.allowed_file(filename):
+            raise ValueError("Invalid image format.")
 
-            # Read file content
-            image_binary = self.image_file.read()
+        # 🖼️ Read and resize image using PIL
+        image_binary = self.image_file.read()
+        image = Image.open(io.BytesIO(image_binary)).convert("RGBA")
 
-            # Remove background using rembg
-            image_no_bg = remove(image_binary)  # This returns binary image data
+        # ✅ Resize the image to a safe size (e.g., 512x512 max)
+        image.thumbnail((512, 512), Image.ANTIALIAS)
 
-            # Save to GridFS
-            gridfs_id = get_fs().put(image_no_bg, filename=filename, content_type="image/png")
+        # 💾 Save resized image to a buffer
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        buffer.seek(0)
 
-            # Optionally save a base64 version for preview
-            image_base64 = base64.b64encode(image_no_bg).decode("utf-8")
+        # 🪄 Remove background using rembg
+        image_no_bg = remove(buffer.getvalue())  # This returns binary image data
 
-            # Store metadata in MongoDB
-            avatar_doc = {
-                'avatarname': self.avatarname,
-                'username': self.username,
-                'image_data': image_base64,  # for preview
-                'file_id': gridfs_id,        # used by generate_video()
-                'upload_date': datetime.utcnow()
-            }
+        # 🧱 Save to GridFS
+        gridfs_id = get_fs().put(image_no_bg, filename=filename, content_type="image/png")
 
-            mongo.db.avatar.insert_one(avatar_doc)
+        # 🎨 Optionally save a base64 version for preview
+        image_base64 = base64.b64encode(image_no_bg).decode("utf-8")
 
-            return {"success": True, "message": "Avatar uploaded successfully."}
+        # 🧾 Store avatar metadata in MongoDB
+        avatar_doc = {
+            'avatarname': self.avatarname,
+            'username': self.username,
+            'image_data': image_base64,
+            'file_id': gridfs_id,
+            'upload_date': datetime.utcnow()
+        }
 
-        except Exception as e:
-            logging.error(f"Error saving avatar: {str(e)}")
-            return {"success": False, "message": str(e)}
+        mongo.db.avatar.insert_one(avatar_doc)
+
+        return {"success": True, "message": "Avatar uploaded successfully."}
+
+    except Exception as e:
+        logging.error(f"Error saving avatar: {str(e)}")
+        return {"success": False, "message": str(e)}
 
     def add_avatar(self, avatarname, username, image_data, file_path):
         try:
