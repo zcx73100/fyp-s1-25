@@ -3,7 +3,11 @@ name: Build & Publish Docker
 on:
   push:
     branches: [ main ]
-    
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,4 +27,3 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/zxc73100/fyp-s1-25:latest
-
