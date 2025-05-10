@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.mp4
+*.mov
+*.avi
+uploads/
+*.zip
+node_modules/
+.env
+.venv/
+.git
+.cache/
