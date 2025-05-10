@@ -902,6 +902,7 @@ class LoginBoundary:
                     session['username'] = username
                     session['role'] = user_info['role']
                     session['user_authenticated'] = True
+                    session['profile_pic'] = str(user_info['profile_pic']) if user_info.get('profile_pic') else None
                     flash(f'Login successful! You are logged in as {user_info["role"].capitalize()}.', category='success')
                     if user_info.get('first_time_login') == True:
                         admin_users = [u["username"] for u in mongo.db.useraccount.find({"role": "Admin"}, {"username": 1})]
