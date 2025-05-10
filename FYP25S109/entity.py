@@ -475,49 +475,60 @@ class Avatar:
             if not self.allowed_file(filename):
                 raise ValueError("Invalid image format.")
 
-            # 🖼️ Read and resize image using PIL
+            # 🖼️ Read image binary
             image_binary = self.image_file.read()
             image = Image.open(io.BytesIO(image_binary)).convert("RGBA")
 
-            # ✅ Resize the image to a safe size (e.g., 512x512 max)
+            # --- ✂️ Pad to square ---
+            width, height = image.size
+            if width != height:
+                delta = abs(width - height)
+                padding = (0, 0, 0, 0)
+
+                if width > height:
+                    padding = (0, delta // 2, 0, delta - (delta // 2))
+                else:
+                    padding = (delta // 2, 0, delta - (delta // 2), 0)
+
+                image = ImageOps.expand(image, padding, fill=(0, 0, 0, 0))  # transparent padding
+
+            # --- 🔁 Resize to 512x512 with BICUBIC ---
             try:
-                resample = Image.Resampling.LANCZOS
+                resample = Image.Resampling.BICUBIC
             except AttributeError:
-                resample = Image.ANTIALIAS  # fallback for older Pillow versions
+                resample = Image.BICUBIC
 
-            image.thumbnail((512, 512), resample)  # <- make sure this is outside the try/except
+            image = image.resize((512, 512), resample)
 
-            # 💾 Save resized image to a buffer
+            # 💾 Save resized image to buffer
             buffer = io.BytesIO()
             image.save(buffer, format="PNG")
             buffer.seek(0)
 
             # 🪄 Remove background using rembg
-            image_no_bg = remove(buffer.getvalue())  # This returns binary image data
+            image_no_bg = remove(buffer.getvalue())
 
-            # 🧱 Save to GridFS
+            # 📦 Save to GridFS
             gridfs_id = get_fs().put(image_no_bg, filename=filename, content_type="image/png")
 
-            # 🎨 Optionally save a base64 version for preview
+            # 🧬 Base64 preview version
             image_base64 = base64.b64encode(image_no_bg).decode("utf-8")
 
-            # 🧾 Store avatar metadata in MongoDB
-            avatar_doc = {
+            # 🗃️ Save avatar metadata
+            mongo.db.avatar.insert_one({
                 'avatarname': self.avatarname,
                 'username': self.username,
                 'image_data': image_base64,
                 'file_id': gridfs_id,
                 'upload_date': datetime.utcnow()
-            }
-
-            mongo.db.avatar.insert_one(avatar_doc)
+            })
 
             return {"success": True, "message": "Avatar uploaded successfully."}
 
         except Exception as e:
             logging.error(f"Error saving avatar: {str(e)}")
             return {"success": False, "message": str(e)}
-
+            
     def add_avatar(self, avatarname, username, image_data, file_path):
         try:
             mongo.db.avatar.insert_one({
