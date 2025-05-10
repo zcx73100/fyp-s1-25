@@ -972,10 +972,12 @@ class LoginBoundary:
 @boundary.route('/profile_pic/<file_id>')
 def get_profile_pic(file_id):
     try:
-        ile = get_fs().get(ObjectId(file_id))
-        return send_file(file, mimetype='image/jpeg')  # or use file.content_type if available
-    except:
+        file = get_fs().get(ObjectId(file_id))
+        return send_file(file, mimetype=file.content_type or 'image/jpeg')
+    except Exception as e:
+        print(f"Error retrieving profile picture: {e}")
         return "Image not found", 404
+
 
 
 # Log Out
