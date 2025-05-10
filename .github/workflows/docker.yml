@@ -26,4 +26,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/zxc73100/fyp-s1-25:latest
+          tags: ghcr.io/zcx73100/fyp-s1-25:latest
