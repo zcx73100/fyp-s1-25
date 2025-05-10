@@ -477,7 +477,7 @@ class Avatar:
             if not self.allowed_file(filename):
                 raise ValueError("Invalid image format.")
 
-            # Step 1: Read image file
+            # Step 1: Load image
             image_binary = self.image_file.read()
             image = Image.open(io.BytesIO(image_binary)).convert("RGBA")
 
@@ -499,27 +499,19 @@ class Avatar:
                 resample = Image.BICUBIC
             image = image.resize((512, 512), resample)
 
-            # Step 4: Save to memory
+            # Step 4: Save image to buffer (no rembg)
             buffer = io.BytesIO()
             image.save(buffer, format="PNG")
             buffer.seek(0)
-            raw_image_bytes = buffer.getvalue()
+            image_data = buffer.getvalue()
 
-            # Step 5: Background removal with fallback
-            try:
-                image_no_bg = remove(raw_image_bytes, session=rembg_session)
-                logging.info("[rembg] Background removed successfully.")
-            except Exception as e:
-                logging.warning(f"[rembg] Failed, using original image: {e}")
-                image_no_bg = raw_image_bytes
+            # Step 5: Save to GridFS
+            gridfs_id = get_fs().put(image_data, filename=filename, content_type="image/png")
 
-            # Step 6: Save to GridFS
-            gridfs_id = get_fs().put(image_no_bg, filename=filename, content_type="image/png")
+            # Step 6: Store as base64 preview
+            image_base64 = base64.b64encode(image_data).decode("utf-8")
 
-            # Step 7: Convert to base64 for preview
-            image_base64 = base64.b64encode(image_no_bg).decode("utf-8")
-
-            # Step 8: Store avatar in DB
+            # Step 7: Insert into DB
             avatar_record = {
                 'avatarname': self.avatarname,
                 'username': self.username,
@@ -536,6 +528,7 @@ class Avatar:
         except Exception as e:
             logging.error(f"[Avatar Upload Error] {str(e)}")
             return {"success": False, "message": f"Failed to upload avatar: {str(e)}"}
+
 
     def add_avatar(self, avatarname, username, image_data, file_path):
         try:
