@@ -577,4 +577,5 @@ class ReadNotificationController:
 class GetUnreadNotificationsController:
     @staticmethod
     def get_unread_notifications(username):
-        return Notification.get_unread_notifications(username)
+        notifications = Notification.get_unread_notifications(username)
+        return notifications if notifications is not None else []
