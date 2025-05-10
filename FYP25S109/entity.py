@@ -21,6 +21,7 @@ import base64
 import mimetypes
 from gtts import gTTS
 from gridfs import GridFS
+from PIL import Image
 
 def get_fs():
     return GridFS(mongo.db)
@@ -469,32 +470,37 @@ class Avatar:
         try:
             if not self.image_file:
                 raise ValueError("No file selected for upload.")
-    
+
             filename = secure_filename(self.image_file.filename)
             if not self.allowed_file(filename):
                 raise ValueError("Invalid image format.")
-    
+
             # 🖼️ Read and resize image using PIL
             image_binary = self.image_file.read()
             image = Image.open(io.BytesIO(image_binary)).convert("RGBA")
-    
+
             # ✅ Resize the image to a safe size (e.g., 512x512 max)
-            image.thumbnail((512, 512), Image.ANTIALIAS)
-    
+            try:
+                resample = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample = Image.ANTIALIAS  # fallback for older Pillow versions
+
+            image.thumbnail((512, 512), resample)  # <- make sure this is outside the try/except
+
             # 💾 Save resized image to a buffer
             buffer = io.BytesIO()
             image.save(buffer, format="PNG")
             buffer.seek(0)
-    
+
             # 🪄 Remove background using rembg
             image_no_bg = remove(buffer.getvalue())  # This returns binary image data
-    
+
             # 🧱 Save to GridFS
             gridfs_id = get_fs().put(image_no_bg, filename=filename, content_type="image/png")
-    
+
             # 🎨 Optionally save a base64 version for preview
             image_base64 = base64.b64encode(image_no_bg).decode("utf-8")
-    
+
             # 🧾 Store avatar metadata in MongoDB
             avatar_doc = {
                 'avatarname': self.avatarname,
@@ -503,11 +509,11 @@ class Avatar:
                 'file_id': gridfs_id,
                 'upload_date': datetime.utcnow()
             }
-    
+
             mongo.db.avatar.insert_one(avatar_doc)
-    
+
             return {"success": True, "message": "Avatar uploaded successfully."}
-    
+
         except Exception as e:
             logging.error(f"Error saving avatar: {str(e)}")
             return {"success": False, "message": str(e)}
