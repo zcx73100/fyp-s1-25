@@ -17,11 +17,11 @@ from flask import flash, session, redirect, url_for
 import wave
 import subprocess
 import shutil
+from PIL import Image
 import base64
 import mimetypes
 from gtts import gTTS
 from gridfs import GridFS
-from PIL import Image
 
 def get_fs():
     return GridFS(mongo.db)
@@ -536,7 +536,7 @@ class Avatar:
             logging.error(f"[Avatar Upload Error] {str(e)}")
             return {"success": False, "message": f"Failed to upload avatar: {str(e)}"}
 
-            
+
     def add_avatar(self, avatarname, username, image_data, file_path):
         try:
             mongo.db.avatar.insert_one({
@@ -1375,5 +1375,4 @@ class Notification:
                     "is_read": False
                 }).sort("timestamp", -1)
             else:
-                return None
-
+                return []  # ✅ SAFER: return empty list instead of None
