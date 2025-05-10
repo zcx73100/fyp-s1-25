@@ -114,9 +114,10 @@
                         </ul>
                     </li>
 
-                    {% if user_info and user_info.profile_pic %}
-                    <img src="{{ url_for('boundary.get_profile_pic', file_id=user_info.profile_pic) }}" class="profile-pic me-2" alt="Profile Picture">
-                {% endif %}
+                    {% if session.get('profile_pic') %}
+                        <img src="{{ url_for('boundary.get_profile_pic', file_id=session['profile_pic']) }}" class="profile-pic me-2" alt="Profile Picture">
+                    {% endif %}
+
                 
                     <li class="nav-item dropdown d-flex align-items-center">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
