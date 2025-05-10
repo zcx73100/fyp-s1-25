@@ -15,7 +15,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.CR_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push image
         uses: docker/build-push-action@v4
@@ -23,3 +23,4 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/zxc73100/fyp-s1-25:latest
+
