@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Manage Notifications</h2>
+
+<div class="container mt-5">
+    <!-- ✅ Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ✍️ Toggle Create Notification (Teacher Only) -->
+    {% if session['role'] == 'Teacher' %}
+        <button class="btn btn-outline-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#notificationForm" aria-expanded="false" aria-controls="notificationForm">
+            + Add Notification
+        </button>
+
+        <div class="collapse mb-5" id="notificationForm">
+            <div class="card card-body">
+                <h4 class="mb-3">Send Notification</h4>
+                <form action="{{ url_for('boundary.send_notification') }}" method="post">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Notification Title:</label>
+                        <input type="text" class="form-control" name="title" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description:</label>
+                        <textarea class="form-control" name="description" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Priority (1 - Low, 2 - Medium, 3 - High):</label>
+                        <select class="form-select" name="priority" required>
+                            <option value="1">1 - Low</option>
+                            <option value="2">2 - Medium</option>
+                            <option value="3">3 - High</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="classroom" class="form-label">Select Classroom:</label>
+                        <select class="form-select" name="classroom_id" required>
+                            {% for class in classroom %}
+                                <option value="{{ class._id }}">{{ class.classroom_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Add Notification</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- 🔍 Search Notifications -->
+    <form method="get" action="{{ url_for('boundary.view_notifications') }}" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Search notifications..." value="{{ request.args.get('q', '') }}">
+            <button class="btn btn-outline-secondary" type="submit">Search</button>
+        </div>
+    </form>
+
+    <!-- 📋 Notification List -->
+    {% if notifications %}
+        <ul class="list-group mb-4">
+            {% for notif in notifications %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ notif.title }}</strong>
+                        <span class="badge bg-primary ms-2">Priority: {{ notif.priority }}</span><br>
+                        <small>{{ notif.description }}</small>
+                    </div>
+                
+                    {% if session['role'] == 'Teacher' %}
+                    <div class="btn-group ms-3" role="group">
+                        <a href="{{ url_for('boundary.edit_notification', notification_id=notif._id|string) }}" class="btn btn-sm btn-warning">Edit</a>
+                        <form method="post" action="{{ url_for('boundary.delete_notification', notification_id=notif._id|string) }}">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No notifications found.</p>
+    {% endif %}
+</div>
+{% endblock %}
