@@ -5,7 +5,6 @@ import logging
 from datetime import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from PIL import Image, ImageOps
 import io, requests
 from pymongo.errors import DuplicateKeyError
 from io import BytesIO
@@ -16,6 +15,7 @@ from flask import flash, session, redirect, url_for
 import wave
 import subprocess
 import shutil
+from PIL import Image, ImageOps
 import base64
 import mimetypes
 from gtts import gTTS
@@ -257,10 +257,13 @@ class TutorialVideo:
     @staticmethod
     def search_video(search_query):
         try:
-            videos = mongo.db.tutorialvideo.find({
-                "title": {"$regex": search_query, "$options": "i"}
+            return mongo.db.tutorialvideo.find({
+                "$or": [
+                    {"title": {"$regex": search_query, "$options": "i"}},
+                    {"description": {"$regex": search_query, "$options": "i"}},
+                    {"username": {"$regex": search_query, "$options": "i"}}
+                ]
             })
-            return list(videos)
         except Exception as e:
             logging.error(f"Failed to search videos: {str(e)}")
             return []
@@ -544,13 +547,12 @@ class Avatar:
     @staticmethod
     def search_avatar(search_query):
         try:
-            avatars = mongo.db.avatar.find({
+            return mongo.db.avatar.find({
                 "$or": [
                     {"avatarname": {"$regex": search_query, "$options": "i"}},
                     {"username": {"$regex": search_query, "$options": "i"}}
                 ]
             })
-            return list(avatars)
         except Exception as e:
             logging.error(f"Failed to search avatars: {str(e)}")
             return []

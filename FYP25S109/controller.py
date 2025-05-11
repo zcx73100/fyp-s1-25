@@ -4,7 +4,7 @@ import requests
 import json
 from bson import ObjectId
 from datetime import datetime, timezone
-
+from .entity import get_fs
 
 class VideoController:
     @staticmethod
@@ -105,12 +105,25 @@ class DeleteVideoController:
 class SearchTutorialController:
     @staticmethod
     def search_video(search_query):
-        return TutorialVideo.search_video(search_query)  # Call entity method
+        raw_results = TutorialVideo.search_video(search_query)
+        return [{
+            "title": v.get("title", "Untitled"),
+            "description": v.get("description", ""),
+            "video_name": v.get("video_name", ""),
+            "username": v.get("username", "Unknown")
+        } for v in raw_results]
+ # Call entity method
     
 class SearchAvatarController:
     @staticmethod
     def search_avatar(search_query):
-        return Avatar.search_avatar(search_query)  # Call entity method
+        raw_results = Avatar.search_avatar(search_query)
+        return [{
+            "avatarname": a.get("avatarname", "Unnamed"),
+            "image_data": a.get("image_data", ""),
+            "username": a.get("username", "")
+        } for a in raw_results]
+# Call entity method
 
 class ManageAvatarController:
     @staticmethod
@@ -269,10 +282,10 @@ class UploadAssignmentController:
     @staticmethod
     def upload_assignment(title, classroom_id, description, deadline, file, filename, video_id=None):
         try:
-            # 1️⃣ Save the file...
+            fs = get_fs()  # ✅ Correctly instantiate GridFS
+
             file_id = fs.put(file, filename=filename) if file else None
 
-            # 2️⃣ Build the assignment doc
             assignment_doc = {
                 "title": title,
                 "description": description,
@@ -280,21 +293,23 @@ class UploadAssignmentController:
                 "classroom_id": classroom_id,
                 "created_at": datetime.utcnow()
             }
+
             if file_id:
                 assignment_doc.update({
                     "file_id": file_id,
                     "file_name": filename
                 })
+
             if video_id:
-                # store the generated-video GridFS id here
                 assignment_doc["video_id"] = ObjectId(video_id)
 
-            # 3️⃣ Insert
             mongo.db.assignments.insert_one(assignment_doc)
 
             return {"success": True, "message": "Assignment uploaded successfully with video."}
+
         except Exception as e:
             return {"success": False, "message": f"Error: {e}"}
+
 
 
 
@@ -390,7 +405,7 @@ class StudentSendSubmissionController:
     def get_submission_file(file_id):
         """Retrieves the actual file from GridFS."""
         try:
-            fs = gridfs.GridFS(mongo.db)
+            fs = get_fs()
             file = fs.get(ObjectId(file_id))
             return file
         except Exception as e:

@@ -20,7 +20,7 @@ from bson.errors import InvalidId
 from io import BytesIO
 import re
 import ffmpeg
-
+from FYP25S109.entity import get_fs
 
 
 boundary = Blueprint('boundary', __name__)
@@ -490,33 +490,29 @@ class AvatarVideoBoundary:
             if not username:
                 return jsonify(success=False, error="Unauthorized"), 401
 
-            # First get the video document to verify ownership
             video = mongo.db.generated_videos.find_one({
                 "video_id": ObjectId(video_id),
                 "username": username
             })
-            
+
             if not video:
                 return jsonify(success=False, error="Video not found"), 404
 
-            # Delete from GridFS first
-            fs.delete(ObjectId(video["video_id"]))
-            
-            # Then delete the metadata document
+            fs = get_fs()  # ✅ Define GridFS instance
+            fs.delete(ObjectId(video["video_id"]))  # ✅ Safe call
+
             result = mongo.db.generated_videos.delete_one({
                 "video_id": ObjectId(video_id),
                 "username": username
             })
 
-            if result.deleted_count == 1:
-                return redirect(url_for('boundary.my_videos'))
-            else:
-                return redirect(url_for('boundary.my_videos'))
+            return redirect(url_for('boundary.my_videos'))
 
         except Exception as e:
             print(f"Error deleting video: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
-    
+
+        
     @staticmethod
     @boundary.route('/generated_video/<video_id>')
     def serve_generated_video(video_id):
@@ -658,10 +654,11 @@ class AvatarVideoBoundary:
             if not voice_record:
                 return jsonify(success=False, error="Voice not found"), 404
 
-            # Delete from GridFS
+            # ✅ Delete from GridFS
+            fs = get_fs()
             fs.delete(ObjectId(audio_id))
 
-            # Delete the metadata record
+            # ✅ Delete metadata
             result = mongo.db.voice_records.delete_one({
                 "audio_id": ObjectId(audio_id),
                 "username": username
@@ -675,6 +672,7 @@ class AvatarVideoBoundary:
         except Exception as e:
             print(f"Error deleting voice {audio_id}: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
+
     
     @staticmethod
     @boundary.route("/upload_mp3_voice", methods=["POST"])
@@ -1275,9 +1273,9 @@ class SearchBoundary:
     @boundary.route('/search', methods=['GET'])
     def search():
         search_query = request.args.get('query', '').strip()
-        filter_type = request.args.get('filter', 'video')
+        filter_type = request.args.get('filter', 'video').lower()
 
-        print(f"Received Search Query: '{search_query}' | Filter: '{filter_type}'")
+        print(f"[SEARCH] Received query: '{search_query}' | Filter: '{filter_type}'")
 
         if not search_query:
             flash("Please enter a search query.", category="error")
@@ -1285,8 +1283,17 @@ class SearchBoundary:
 
         if filter_type == 'video':
             search_results = SearchTutorialController.search_video(search_query)
+            # Normalize result fields if needed
+            for v in search_results:
+                v["video_name"] = v.get("video_name", "")
+                v["title"] = v.get("title", "Untitled")
+                v["description"] = v.get("description", "No description")
+                v["username"] = v.get("username", "Unknown")
         elif filter_type == 'avatar':
             search_results = SearchAvatarController.search_avatar(search_query)
+            for a in search_results:
+                a["avatarname"] = a.get("avatarname", "Unnamed")
+                a["file_path"] = a.get("file_path", "")  # Ensure this is a valid relative static path
         else:
             flash("Invalid filter type.", category="error")
             return redirect(url_for('boundary.home'))
@@ -1294,9 +1301,14 @@ class SearchBoundary:
         if not search_results:
             flash(f"No {filter_type} results found.", category="info")
         else:
-            print(f"Found {len(search_results)} results.")
+            print(f"[SEARCH] Found {len(search_results)} {filter_type} results.")
 
-        return render_template("search.html", search_results=search_results, filter_type=filter_type)
+        return render_template(
+            "search.html",
+            search_results=search_results,
+            filter_type=filter_type,
+            search_query=search_query
+        )
 
 
 
@@ -2039,6 +2051,7 @@ class TeacherManageMaterialBoundary:
             materials = mongo.db.materials.find({"classroom_id": ObjectId(classroom_id)})
 
         return render_template('manageMaterials.html', materials=materials, classroom_id=classroom_id)
+    
     @staticmethod
     @boundary.route('/teacher/download_material/<material_id>')
     def download_material(material_id):
@@ -2048,14 +2061,12 @@ class TeacherManageMaterialBoundary:
             return redirect(url_for("boundary.home"))
 
         try:
-            # Initialize GridFS
-            fs = gridfs.GridFS(mongo.db)
-            
-            # Retrieve file from GridFS
-            file_data = get_fs().get(material["file_id"])  
-            
+            fs = get_fs()  # ✅ Safely get GridFS instance
+
+            file_data = fs.get(material["file_id"])  # ✅ Reuse this instance
+
             return send_file(
-                io.BytesIO(file_data.read()),  # Read the binary data
+                io.BytesIO(file_data.read()),
                 mimetype=mimetypes.guess_type(material["file_name"])[0] or "application/octet-stream",
                 as_attachment=True,
                 download_name=material["file_name"]
@@ -2063,7 +2074,7 @@ class TeacherManageMaterialBoundary:
         except Exception as e:
             flash(f"Error downloading file: {str(e)}", "danger")
             return redirect(url_for("boundary.home"))
-
+        
 # View Quiz        
 class TeacherViewQuizBoundary:
     @boundary.route('/teacher/view_quiz/<quiz_id>', methods=['GET'])
@@ -2365,28 +2376,29 @@ class TeacherAssignmentBoundary:
         )
     
 
-    @boundary.route('/download-submission/<submission_id>/<filename>' ,methods=['GET'])
+    @boundary.route('/download-submission/<submission_id>/<filename>', methods=['GET'])
     def download_submitted_assignment(submission_id, filename):
         """Allows a teacher to download a submitted assignment."""
         if 'role' not in session or session.get('role') != 'Teacher':
             flash("Unauthorized access.", category='error')
             return redirect(url_for('boundary.home'))
 
-        # Check if the file exists in GridFS
-        fs = gridfs.GridFS(mongo.db)
-        file_data = fs.find_one({"file_name": filename})
+        fs = get_fs()  # ✅ Use shared GridFS helper
+
+        # Option 1: Find by custom metadata (if stored this way)
+        file_data = fs.find_one({"filename": filename})
 
         if not file_data:
             flash("File not found!", "danger")
-            return redirect(request.referrer)
+            return redirect(request.referrer or url_for("boundary.home"))
 
-        # Send the file as an attachment
         return send_file(
             io.BytesIO(file_data.read()),
-            mimetype=mimetypes.guess_type(filename)[0],
+            mimetype=mimetypes.guess_type(filename)[0] or "application/octet-stream",
             as_attachment=True,
             download_name=filename
         )
+
     
     @boundary.route('/add_feedback/<submission_id>', methods=['POST'])
     def add_feedback(submission_id):
