@@ -301,7 +301,7 @@ class AvatarVideoBoundary:
 
     @staticmethod
     @boundary.route("/generate_video_page", methods=["GET"])
-    def generate_page():
+    def generate_video_page():
         username = session.get("username")
         if username:
             temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
