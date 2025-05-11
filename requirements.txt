@@ -128,7 +128,6 @@ pyttsx3==2.98
 pytz==2024.1
 PyYAML==6.0.2
 referencing==0.36.2
-rembg==2.0.63
 requests==2.31.0
 rich==13.9.4
 rpds-py==0.23.1
