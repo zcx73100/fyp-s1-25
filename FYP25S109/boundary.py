@@ -235,69 +235,60 @@ class AvatarVideoBoundary:
         except Exception as e:
             print(f"Error streaming audio {audio_id}: {str(e)}")
             return jsonify(success=False, error=f"Audio not found: {str(e)}"), 404
-    @staticmethod
-    @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["GET", "POST"])
+    
+    @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["POST"])
     def generate_video(avatar_id, audio_id):
         username = session.get("username")
         if not username:
             return redirect(url_for("boundary.login"))
 
-        # GET: show page
-        if request.method == "GET":
-            classroom_id = request.args.get("classroom_id")
-            assignment_id = request.args.get("assignment_id")
-            source = request.args.get("source")
+        text = request.form.get("text", "").strip()
+        video_title = request.form.get("video_title", "Untitled")
+        task_id = str(uuid.uuid4())
 
-            avatars = list(mongo.db.avatar.find({"username": username}))
-            voice_records = list(mongo.db.voice_records.find({"username": username}))
+        def background_video_generation():
+            try:
+                avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+                if not avatar_doc or "file_id" not in avatar_doc:
+                    raise Exception("Avatar file not found.")
 
-            return render_template(
-                "generateVideo.html",
-                avatars=avatars,
-                voice_records=voice_records,
-                classroom_id=classroom_id,
-                assignment_id=assignment_id,
-                source=source
-            )
+                file_id = avatar_doc["file_id"]
 
-        # POST: generate & (if student) save submission
-        try:
-            text = request.form.get("text", "").strip()
-            avatar_id = request.form.get("avatar_id")
-            audio_id = request.form.get("audio_id")
-            video_title = request.form.get("video_title")  # Get the title
-            source = request.form.get("source")
-            classroom_id = request.form.get("classroom_id")
-            assignment_id = request.form.get("assignment_id")
+                controller = GenerateVideoController()
+                video_gridfs_id = controller.generate_video(text, file_id, audio_id=audio_id, title=video_title)
 
-            if not avatar_id or not audio_id:
-                return jsonify({"success": False, "error": "Avatar and Audio are required."}), 400
+                with open(f"./results/{video_title}.mp4", "rb") as f:
+                    fs_id = get_fs().put(f, filename=f"{video_title}.mp4")
 
-            avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
-            if not avatar_doc:
-                return jsonify({"success": False, "error": "Avatar file not found."}), 400
+                mongo.db.tempvideo.insert_one({
+                    "task_id": task_id,
+                    "username": username,
+                    "avatar_id": ObjectId(avatar_id),
+                    "audio_id": ObjectId(audio_id),
+                    "video_id": fs_id,
+                    "created_at": datetime.utcnow(),
+                    "is_published": False
+                })
+            except Exception as e:
+                mongo.db.tempvideo.insert_one({
+                    "task_id": task_id,
+                    "error": str(e),
+                    "created_at": datetime.utcnow()
+                })
 
-            file_id = avatar_doc["file_id"]
+        threading.Thread(target=background_video_generation).start()
+        return jsonify(success=True, task_id=task_id)
 
-            controller = GenerateVideoController()
-            video_gridfs_id = controller.generate_video(text, file_id, audio_id=audio_id,title=video_title)
+    @boundary.route("/check_video/<task_id>", methods=["GET"])
+    def check_video(task_id):
+        result = mongo.db.tempvideo.find_one({"task_id": task_id})
+        if not result:
+            return jsonify(ready=False)
 
-            if not video_gridfs_id:
-                return jsonify({"success": False, "error": "Video generation failed."}), 500
+        if "error" in result:
+            return jsonify(ready=True, error=result["error"])
 
-            # Student submission hook
-            if source == "submission" and assignment_id and session.get("role") == "Student":
-                student = session["username"]
-                StudentSendSubmissionController.submit_video_assignment_logic(
-                    assignment_id,
-                    student,
-                    str(video_gridfs_id)
-                )
-            return jsonify({"success": True, "video_id": str(video_gridfs_id)})
-
-        except Exception as e:
-            print("❌ Error in /generate_video:", str(e))
-            return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify(ready=True, video_id=str(result["video_id"]))
 
     @staticmethod
     @boundary.route("/stream_video/<video_id>")
@@ -309,21 +300,21 @@ class AvatarVideoBoundary:
             return f"Video not found: {e}", 404
 
     @staticmethod
-    @boundary.route("/generate_video_page", methods=["GET"])
-    def generate_video_page():
-        try:
-            username = session.get("username")
-            if not username:
-                return redirect("/login")
+    @boundary.route("/generate_page", methods=["GET"])
+    def generate_page():
+        username = session.get("username")
+        if username:
+            temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
+            for video in temp_videos:
+                try:
+                    get_fs().delete(video["video_id"])
+                    mongo.db.tempvideo.delete_one({"_id": video["_id"]})
+                    print(f"🗑 Temp video cleaned: {video['_id']}")
+                except Exception as e:
+                    print(f"⚠️ Error deleting temp video: {e}")
 
-            avatars = list(mongo.db.avatar.find({"username": username}))
-            audios = list(mongo.db.voice_records.find({"username": username}))
-        except Exception as e:
-            print(f"❌ Error loading generate_video_page: {e}")
-            return "Error loading page", 500
-
-        return render_template("generateVideo.html", avatars=avatars, voice_records=audios)
-
+        return render_template("generate_page.html")
+    
     @staticmethod
     @boundary.route("/save_generated_video", methods=["POST"])
     def save_generated_video():
@@ -2177,23 +2168,44 @@ class TeacherAssignmentBoundary:
     @boundary.route("/publish_assignment_video", methods=["POST"])
     def publish_assignment_video():
         data = request.get_json()
-        gridfs_id = data.get("video_id")  # This is the GridFS ID
+        gridfs_id = data.get("video_id")  # GridFS ID
         classroom_id = data.get("classroom_id")
 
         if not gridfs_id or not classroom_id:
             return jsonify({"success": False, "error": "Missing video ID or classroom ID"}), 400
 
         try:
-            # Look up the video document by the GridFS ID
+            # Try finding it in the permanent collection first
             video_doc = mongo.db.video.find_one({"video_gridfs_id": ObjectId(gridfs_id)})
-            if not video_doc:
-                return jsonify({"success": False, "error": "Video not found"}), 404
 
-            # Store the video document _id (not the GridFS ID)
+            if not video_doc:
+                # Not found in 'video', try 'tempvideo'
+                temp_doc = mongo.db.tempvideo.find_one({"video_id": ObjectId(gridfs_id)})
+                if not temp_doc:
+                    return jsonify({"success": False, "error": "Video not found"}), 404
+
+                # Move from tempvideo to video collection
+                video_doc = {
+                    "video_gridfs_id": ObjectId(gridfs_id),
+                    "uploaded_by": session.get("username"),
+                    "uploaded_at": datetime.utcnow(),
+                    "classroom_id": ObjectId(classroom_id),
+                    "title": "Assignment Video",
+                    "description": "Published from tempvideo"
+                }
+                mongo.db.video.insert_one(video_doc)
+
+                # Clean up tempvideo
+                mongo.db.tempvideo.delete_many({"video_id": ObjectId(gridfs_id)})
+
+            # Store reference for redirect to upload assignment
+            video_doc = mongo.db.video.find_one({"video_gridfs_id": ObjectId(gridfs_id)})
             session["stashed_video_id"] = str(video_doc["_id"])
+
             return jsonify({"success": True})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
+
     
     @staticmethod
     @boundary.route('/teacher/manage_assignments/<classroom_id>', methods=['GET', 'POST'])

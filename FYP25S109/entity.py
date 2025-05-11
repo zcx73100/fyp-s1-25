@@ -280,81 +280,7 @@ class GenerateVideoEntity:
         audio_io = BytesIO(audio_bytes)
         file_id = get_fs().put(audio_io, filename=filename, content_type=content_type)
         return file_id
-    
-    def generate_voice(self, lang, gender):
-        try:
-            if not self.text.strip():
-                raise ValueError("Text input is empty.")
 
-            # Enhanced voice configuration
-            voice_config = {
-                "en": {
-                    "male": {"tld": "com", "lang": "en", "slow": False, "gender_enforced": True},
-                    "female": {"tld": "com.au", "lang": "en", "slow": False, "gender_enforced": True},
-                    "neutral": {"tld": "co.uk", "lang": "en", "slow": False, "gender_enforced": False}
-                },
-                "es": {
-                    "male": {"tld": "com.mx", "lang": "es", "slow": False, "gender_enforced": True},
-                    "female": {"tld": "es", "lang": "es", "slow": False, "gender_enforced": True}
-                },
-                "fr": {
-                    "female": {"tld": "fr", "lang": "fr", "slow": False, "gender_enforced": True},
-                    "neutral": {"tld": "fr", "lang": "fr", "slow": False, "gender_enforced": False}
-                },
-                "de": {
-                    "neutral": {"tld": "de", "lang": "de", "slow": False, "gender_enforced": False}
-                },
-                "it": {
-                    "neutral": {"tld": "it", "lang": "it", "slow": False, "gender_enforced": False}
-                },
-                "ja": {
-                    "neutral": {"tld": "co.jp", "lang": "ja", "slow": False, "gender_enforced": False}
-                },
-                "ko": {
-                    "neutral": {"tld": "co.kr", "lang": "ko", "slow": False, "gender_enforced": False}
-                },
-                "id": {
-                    "neutral": {"tld": "co.id", "lang": "id", "slow": False, "gender_enforced": False}
-                }
-            }
-
-            # Get settings for requested language and gender
-            lang_config = voice_config.get(lang)
-            gender_config = lang_config.get(gender)
-            
-            mp3_buffer = BytesIO()
-            tts = gTTS(
-                text=self.text,
-                lang=lang,
-                tld=gender_config["tld"],
-                slow=gender_config["slow"]
-            )
-            tts.write_to_fp(mp3_buffer)
-            mp3_buffer.seek(0)
-
-            audio_id = get_fs().put(
-                mp3_buffer,
-                filename=f"voice_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.mp3",
-                content_type="audio/mpeg"
-            )
-
-            voice_data = {
-                "audio_id": audio_id,
-                "text": self.text,
-                "lang": lang,
-                "gender": gender,
-                "created_at": datetime.now(),
-                "status": "generated",
-                "username": session.get("username")
-            }
-
-            mongo.db.voice_records.insert_one(voice_data)
-            return audio_id
-
-        except Exception as e:
-            print(f"❌ Error generating voice: {e}")
-            return None
-    
     def save_recording_to_gridfs(self, audio_bytes, filename="audio.wav"):
         try:
             audio_io = BytesIO(audio_bytes)
@@ -364,9 +290,9 @@ class GenerateVideoEntity:
             print(f"❌ Error saving recording to GridFS: {e}")
             return None
 
-    def generate_video(self, avatar_id, audio_id,video_title="Generated Video"):
+    def generate_video(self, avatar_id, audio_id, video_title="Generated Video"):
         try:
-            SADTALKER_API = "https://b0be-180-255-124-70.ngrok-free.app/generate_video_fastapi"
+            SADTALKER_API = "https://fa81-180-255-124-70.ngrok-free.app/generate_video_fastapi"
 
             avatar_file = get_fs().get(ObjectId(avatar_id))
             audio_file = get_fs().get(ObjectId(audio_id))
@@ -416,21 +342,9 @@ class GenerateVideoEntity:
                 metadata={"username": session.get("username")}
             )
 
-            mongo.db.generated_videos.insert_one({
-                "video_id": video_id,
-                "avatar_id": ObjectId(avatar_id),
-                "audio_id": ObjectId(audio_id),
-                "title": video_title,  # Store the title
-                "created_at": datetime.now(),
-                "status": "generated",
-                "username": session.get("username"),
-                "is_published": False
-            })
-
-            # Remove the generated video file if needed
             os.remove(safe_video_path)
 
-            return str(video_id)
+            return video_id
 
         except Exception as e:
             print(f"❌ Error during video generation: {e}")
