@@ -22,7 +22,7 @@
         {% endfor %}
     </div>
 
-{% elif filter_type == "avatar" %}
+    {% elif filter_type == "avatar" %}
     <h4>Avatar Results</h4>
     <div class="row">
         {% for avatar in search_results %}
@@ -37,7 +37,6 @@
         </div>
         {% endfor %}
     </div>
-{% endif %}
 
     {% else %}
         <p style="text-align:center">Invalid search filter.</p>
