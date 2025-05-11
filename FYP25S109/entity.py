@@ -5,7 +5,6 @@ import logging
 from datetime import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from rembg import remove
 from PIL import Image
 import io, requests
 from pymongo.errors import DuplicateKeyError
@@ -22,8 +21,7 @@ import base64
 import mimetypes
 from gtts import gTTS
 from gridfs import GridFS
-from rembg import new_session
-rembg_session = new_session("u2net")
+
 
 def get_fs():
     return GridFS(mongo.db)
