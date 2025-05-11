@@ -914,7 +914,7 @@ class LoginBoundary:
                                 "username": avatar_doc.get("username"),
                                 "avatarname": avatar_doc.get("avatarname"),
                                 "image_data": avatar_doc.get("image_data"),
-                                "avatar_id" : avatar_doc.get('file_id'),
+                                "avatar_id" : str(avatar_doc.get('_id')),
                                 "video_id": None
                             }
                             
