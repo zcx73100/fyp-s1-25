@@ -1,15 +1,30 @@
+# Python artifacts
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.log
+
+# Audio/Video files (generated or uploaded)
 *.mp4
 *.mov
 *.avi
+*.wav
+*.webm
+
+# Upload and result folders (if not required in image)
 uploads/
-*.zip
+results/
+
+# Package/Virtualenv
 node_modules/
 .env
 .venv/
-.git
+env/
 .cache/
+*.zip
+
+# Git and metadata
+.git/
+.dockerignore
+.DS_Store
