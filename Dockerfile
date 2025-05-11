@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-xfixes0 \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
+    libgl1 \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
