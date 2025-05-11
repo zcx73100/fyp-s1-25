@@ -300,7 +300,7 @@ class AvatarVideoBoundary:
             return f"Video not found: {e}", 404
 
     @staticmethod
-    @boundary.route("/generate_page", methods=["GET"])
+    @boundary.route("/generate_video_page", methods=["GET"])
     def generate_page():
         username = session.get("username")
         if username:
