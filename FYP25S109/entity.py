@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from PIL import Image
+from PIL import Image, ImageOps
 import io, requests
 from pymongo.errors import DuplicateKeyError
 from io import BytesIO
@@ -16,7 +16,6 @@ from flask import flash, session, redirect, url_for
 import wave
 import subprocess
 import shutil
-from PIL import Image
 import base64
 import mimetypes
 from gtts import gTTS
