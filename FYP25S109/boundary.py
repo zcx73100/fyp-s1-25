@@ -313,7 +313,7 @@ class AvatarVideoBoundary:
                 except Exception as e:
                     print(f"⚠️ Error deleting temp video: {e}")
 
-        return render_template("generate_page.html")
+        return render_template("generateVideo.html")
     
     @staticmethod
     @boundary.route("/save_generated_video", methods=["POST"])
