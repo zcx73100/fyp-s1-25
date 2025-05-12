@@ -1156,15 +1156,23 @@ class ChangeAssistantBoundary:
 
             return redirect(url_for('boundary.accDetails'))
 
-        # Fetch available avatars for the user
+        # Fetch avatars uploaded by admins and the user
         admin_users = list(mongo.db.useraccount.find({"role": "Admin"}, {"username": 1}))
-        admin_usernames = [u['username'] for u in admin_users]  # <-- FIX HERE
+        admin_usernames = [u['username'] for u in admin_users]
 
         admin_avatars = list(mongo.db.avatar.find({"username": {"$in": admin_usernames}}))
         user_avatars = list(mongo.db.avatar.find({"username": username}))
-        avatars = admin_avatars + user_avatars
+
+        # Merge, filter duplicates and ensure image_data exists
+        unique_ids = set()
+        avatars = []
+        for avatar in admin_avatars + user_avatars:
+            if avatar["_id"] not in unique_ids and avatar.get("image_data"):
+                avatars.append(avatar)
+                unique_ids.add(avatar["_id"])
+
         return render_template("changeAssistant.html", avatars=avatars, user_info=user_info)
-    
+
     @staticmethod
     @boundary.route('/set_first_time_login_false', methods=['POST'])
     def set_first_time_login_false():   
@@ -1189,6 +1197,7 @@ class ChangeAssistantBoundary:
             flash("Failed to update first time login status. Try again.", category='error')
 
         return redirect(url_for('boundary.home'))
+
 
 # Update Password
 class UpdatePasswordBoundary:
