@@ -7,14 +7,14 @@ WORKDIR /app
 # Don’t generate .pyc files and enable unbuffered output
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-# Default port for Railway/Cloud Run
 ENV PORT=8080
 
-# Install system dependencies including OpenGL / XCB libs for rembg/cv2
+# Install system dependencies, including ffmpeg and OpenGL dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
     libffi-dev \
+    ffmpeg \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
@@ -32,19 +32,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
     libgl1 \
-  && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Expose the port (Railway will set $PORT automatically)
+# Expose the port (Railway sets $PORT automatically)
 EXPOSE 8080
 
 # Start the app with Gunicorn
 CMD ["gunicorn", "-b", "0.0.0.0:8080", "main:app"]
-
