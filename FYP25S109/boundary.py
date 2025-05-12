@@ -21,7 +21,7 @@ from io import BytesIO
 import re
 import ffmpeg
 from FYP25S109.entity import get_fs
-
+from gtts import gTTS
 
 boundary = Blueprint('boundary', __name__)
 UPLOAD_FOLDER = 'FYP25S109/static/uploads/materials'
@@ -166,28 +166,47 @@ class AvatarVideoBoundary:
 
         
     # Route: Generate Voice
-    @staticmethod
     @boundary.route("/generate_voice", methods=["POST"])
     def generate_voice():
         data = request.get_json()
-        text = data.get("text").strip()
-        lang = data.get("lang")
-        gender = data.get("gender")
+        text = data.get("text", "").strip()
 
         if not text:
-            return jsonify(success=False, error="No text provided."), 400
+            return jsonify(success=False, error="Text is required.")
 
         try:
-            controller = GenerateVideoController()
-            audio_id = controller.generate_voice(text, lang, gender)
+            from gtts import gTTS
+            import os, uuid
+            from datetime import datetime
+            from FYP25S109.entity import get_fs
+            from flask import session
 
-            if not audio_id:
-                return jsonify(success=False, error="Voice generation failed."), 500
+            filename = f"gtts_{uuid.uuid4().hex}.mp3"
+            filepath = os.path.join("temp_audio", filename)
+            os.makedirs("temp_audio", exist_ok=True)
 
-            return jsonify(success=True, audio_id=str(audio_id))
+            # Generate voice
+            gtts = gTTS(text=text, lang="en")
+            gtts.save(filepath)
 
+            # Save to GridFS
+            with open(filepath, "rb") as f:
+                file_id = get_fs().put(f, filename=filename, content_type="audio/mpeg")
+
+            os.remove(filepath)
+
+            # Save metadata
+            mongo.db.voice_records.insert_one({
+                "audio_id": file_id,
+                "text": text,
+                "source": "gtts",
+                "created_at": datetime.utcnow(),
+                "username": session.get("username")
+            })
+
+            return jsonify(success=True, audio_id=str(file_id))
         except Exception as e:
-            return jsonify(success=False, error=str(e)), 500
+            return jsonify(success=False, error=str(e))
 
     # Route: Stream audio from GridFS
     @boundary.route("/stream_audio/<audio_id>")
