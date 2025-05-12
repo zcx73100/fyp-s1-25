@@ -292,7 +292,7 @@ class GenerateVideoEntity:
 
     def generate_video(self, avatar_id, audio_id, video_title="Generated Video"):
         try:
-            SADTALKER_API = "https://bce6-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
+            SADTALKER_API = "https://5255-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
 
             avatar_file = get_fs().get(ObjectId(avatar_id))
             audio_file = get_fs().get(ObjectId(audio_id))
