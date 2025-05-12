@@ -875,7 +875,7 @@ document.addEventListener("DOMContentLoaded", () => {
       status.className = "mt-3 alert alert-info";
       status.style.display = "block";
 
-      const response = await fetch("/generate_gtts_voice", {
+      const response = await fetch("/generate_voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text })
