@@ -11,9 +11,9 @@
           <div class="card-body">
             <h5 class="card-title">{{ avatar.avatarname }}</h5>
             {% if avatar.username == user_info.username %}
-              <span class="badge bg-info">Your Avatart Assistants</span>
+              <span class="badge bg-info">Your Upload</span>
             {% else %}
-              <span class="badge bg-secondary">Our Avatar Assistants</span>
+              <span class="badge bg-secondary">Admin</span>
             {% endif %}
             {% if avatar.video_id %}
               <video class="w-100 mt-2" controls>

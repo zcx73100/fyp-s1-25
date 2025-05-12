@@ -1,55 +1,46 @@
-{% extends "base.html" %}
-{% block title %}Update Account Information{% endblock %}
+{% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h2>Update User Details</h2>
-
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <!-- Update Form -->
-    <form action="{{ url_for('boundary.update_account_detail') }}" method="POST" enctype="multipart/form-data">
-        <!-- Profile Picture -->
-        <div class="form-group">
-            <label for="profile_picture">Profile Picture:</label>
-            <input type="file" id="profile_picture" name="profile_picture" class="form-control">
-            {% if user_info.profile_picture %}
-                <img src="{{ url_for('boundary.get_profile_picture', username=user_info.username) }}" alt="Profile Picture" class="img-thumbnail mt-2" width="150">
-            {% endif %}
-        </div>
-
-        <!-- First Name -->
-        <div class="form-group">
-            <label for="name">First Name:</label>
-            <input type="text" id="name" name="name" class="form-control" value="{{ user_info.name }}" required>
-        </div>
-
-        <!-- Last Name -->
-        <div class="form-group">
-            <label for="surname">Last Name:</label>
-            <input type="text" id="surname" name="surname" class="form-control" value="{{ user_info.surname }}" required>
-        </div>
-
-        <!-- Date of Birth -->
-        <div class="form-group">
-            <label for="date_of_birth">Date of Birth:</label>
-            <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" value="{{ user_info.date_of_birth }}">
-        </div>
-
-        <button type="submit" class="btn btn-primary">Update</button>
-        <a href="{{ url_for('boundary.accDetails') }}" class="btn btn-secondary">Cancel</a>
-    </form>
+<div class="container mt-4">
+  <h2 class="text-center">Update Account Details</h2>
+  <form method="POST" enctype="multipart/form-data" class="mt-4">
+    <div class="mb-3">
+      <label for="name" class="form-label">Name</label>
+      <input type="text" class="form-control" id="name" name="name" value="{{ user_info.name }}">
+    </div>
+    <div class="mb-3">
+      <label for="surname" class="form-label">Surname</label>
+      <input type="text" class="form-control" id="surname" name="surname" value="{{ user_info.surname }}">
+    </div>
+    <div class="mb-3">
+      <label for="date_of_birth" class="form-label">Date of Birth</label>
+      <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="{{ user_info.date_of_birth }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Current Profile Picture</label><br>
+      {% if user_info.profile_pic %}
+        <img src="{{ url_for('boundary.get_profile_pic', file_id=user_info.profile_pic) }}" class="img-thumbnail" width="100">
+      {% else %}
+        <em>No profile picture uploaded</em>
+      {% endif %}
+    </div>
+    <div class="mb-3">
+      <label for="profile_picture" class="form-label">Upload New Profile Picture</label>
+      <input class="form-control" type="file" id="profile_picture" name="profile_picture" accept="image/*">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Assistant Avatar</label><br>
+      {% if current_avatar and current_avatar.image_data %}
+        <img src="data:image/png;base64,{{ current_avatar.image_data }}" class="img-thumbnail" width="80">
+        <p>{{ current_avatar.avatarname }}</p>
+      {% else %}
+        <em>No assistant selected.</em>
+      {% endif %}
+    </div>
+    <div class="text-center">
+      <button type="submit" class="btn btn-success">Update</button>
+      <a href="{{ url_for('boundary.accDetails') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
 </div>
 {% endblock %}

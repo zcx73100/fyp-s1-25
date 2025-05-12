@@ -1,71 +1,54 @@
-{% extends "base.html" %}
-
-{% block title %}Account Details{% endblock %}
+{% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h2>Account Details</h2>
-
-    <!-- ✅ Display Profile Picture (if available) -->
-    <div class="text-center mb-3">
+<div class="container mt-4">
+  <h2 class="text-center">Account Details</h2>
+  <table class="table table-bordered mt-3">
+    <tr>
+      <th>Username</th>
+      <td>{{ user_info.username }}</td>
+    </tr>
+    <tr>
+      <th>Name</th>
+      <td>{{ user_info.name }}</td>
+    </tr>
+    <tr>
+      <th>Surname</th>
+      <td>{{ user_info.surname }}</td>
+    </tr>
+    <tr>
+      <th>Date of Birth</th>
+      <td>{{ user_info.date_of_birth }}</td>
+    </tr>
+    <tr>
+      <th>User Type</th>
+      <td>{{ user_info.usertype }}</td>
+    </tr>
+    <tr>
+      <th>Profile Picture</th>
+      <td>
         {% if user_info.profile_pic %}
-            <img src="{{ url_for('boundary.get_profile_pic', file_id=user_info.profile_pic) }}" alt="Profile Picture" class="img-thumbnail rounded-circle" width="150">
+          <img src="{{ url_for('boundary.get_profile_pic', file_id=user_info.profile_pic) }}" class="img-thumbnail" width="80">
         {% else %}
-            <p><em>No profile picture uploaded.</em></p>
+          <em>No picture uploaded</em>
         {% endif %}
-    </div>
-    
-    <table class="table table-bordered">
-        <tr>
-            <th>Username</th>
-            <td>{{ user_info.username }}</td>
-        </tr>
-        <tr>
-            <th>First Name</th>
-            <td>{{ user_info.name if user_info.name else 'N/A' }}</td>
-        </tr>
-        <tr>
-            <th>Last Name</th>
-            <td>{{ user_info.surname if user_info.surname else 'N/A' }}</td>
-        </tr>
-        <tr>
-            <th>Date of Birth</th>
-            <td>{{ user_info.date_of_birth if user_info.date_of_birth else 'N/A' }}</td>
-        </tr>
-        <tr>
-            <th>Email</th>
-            <td>{{ user_info.email if user_info.email }}</td>
-        </tr>
-        <tr>
-            <th>Role</th>
-            <td><strong class="text-primary">{{ user_info.role }}</strong></td>
-        </tr>
-        <tr>
-            <th>Avatar Assistant</th>
-            <td>
-                {% if current_avatar and current_avatar.image_data %}
-                    <img src="data:image/png;base64,{{ current_avatar.image_data }}" 
-                         alt="Avatar Assistant" 
-                         class="img-thumbnail" 
-                         width="50">
-                    <span>{{ current_avatar.avatarname }}</span>
-                {% else %}
-                    <em>No avatar selected.</em>
-                {% endif %}
-            </td>
-        </tr>
-        
-    </table>
-
-    <!-- ✅ Button Styling & Layout -->
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('boundary.home') }}" class="btn btn-outline-secondary">Back to Home</a>
-        <a href="{{ url_for('boundary.update_account_detail') }}" class="btn btn-primary">Update Account Details</a>
-        <a href="{{ url_for('boundary.update_password') }}" class="btn btn-warning">Update Password</a>
-        <a href="{{ url_for('boundary.view_notifications') }}" class="btn btn-info">View Notifications</a>
-        <a href="{{ url_for('boundary.manage_avatars') }}" class="btn btn-success">Manage Avatars</a>
-        <a href="{{ url_for('boundary.change_assistant') }}" class="btn btn-danger">Change Avatar Assistant</a>
-    </div>
-
+      </td>
+    </tr>
+    <tr>
+      <th>Assistant Avatar</th>
+      <td>
+        {% if current_avatar and current_avatar.image_data %}
+          <img src="data:image/png;base64,{{ current_avatar.image_data }}" alt="Avatar Assistant" class="img-thumbnail" width="50">
+          <span>{{ current_avatar.avatarname }}</span>
+        {% else %}
+          <em>No avatar selected.</em>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+  <div class="text-center">
+    <a href="{{ url_for('boundary.update_account_detail') }}" class="btn btn-warning">Edit Account</a>
+    <a href="{{ url_for('boundary.change_assistant') }}" class="btn btn-primary">Change Assistant</a>
+  </div>
 </div>
 {% endblock %}
