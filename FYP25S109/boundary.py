@@ -2204,12 +2204,14 @@ class TeacherAssignmentBoundary:
         filename = secure_filename(upload_file.filename) if upload_file else None
 
         video_oid = None
-        if video_id:
+        
+        if video_id and video_id.strip():  # ✅ check it's non-empty
             try:
                 video_oid = ObjectId(video_id)
             except Exception:
-                flash("Invalid video ID.", "danger")
+                flash("Invalid video ID format.", "danger")
                 return redirect(request.url)
+
 
         result = UploadAssignmentController.upload_assignment(
             title        = title,
