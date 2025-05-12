@@ -17,7 +17,7 @@
 {% if session.get('role') != "Student" %}
 <!-- Search Form -->
 <h2>Search Students</h2>
-<form method="get" action="{{ url_for('boundary.search_student', classroom_name=classroom.classroom_name, query=query) }}">
+<form method="get" action="{{ url_for('boundary.search_student', classroom_id=classroom._id, query=query|default('')) }}">
     <input type="hidden" name="classroom" value="{{ classroom.classroom_name }}">
     <input type="text" name="query" placeholder="Search by username or email" required>
     <button type="submit">Search</button>
