@@ -303,18 +303,26 @@ class AvatarVideoBoundary:
     @boundary.route("/generate_video_page", methods=["GET"])
     def generate_video_page():
         username = session.get("username")
-        if username:
-            temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
-            for video in temp_videos:
-                try:
-                    get_fs().delete(video["video_id"])
-                    mongo.db.tempvideo.delete_one({"_id": video["_id"]})
-                    print(f"🗑 Temp video cleaned: {video['_id']}")
-                except Exception as e:
-                    print(f"⚠️ Error deleting temp video: {e}")
+        if not username:
+            flash("You must be logged in to access this page.", category="error")
+            return redirect(url_for('boundary.login'))
 
-        return render_template("generateVideo.html")
-    
+        # 🧹 Clean up old temporary videos
+        temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
+        for video in temp_videos:
+            try:
+                get_fs().delete(video["video_id"])
+                mongo.db.tempvideo.delete_one({"_id": video["_id"]})
+                print(f"🗑 Temp video cleaned: {video['_id']}")
+            except Exception as e:
+                print(f"⚠️ Error deleting temp video: {e}")
+
+        # ✅ Fetch available avatars and voices
+        avatars = list(mongo.db.avatar.find({"username": username}))
+        voices = list(mongo.db.voice_records.find({"username": username}))
+
+        return render_template("generateVideo.html", avatars=avatars, voice_records=voices)
+
     @staticmethod
     @boundary.route("/save_generated_video", methods=["POST"])
     def save_generated_video():
@@ -1069,7 +1077,15 @@ class CreateAccountBoundary:
         username = session['username']
         user_info = DisplayUserDetailController.get_user_info(username)
 
-        return render_template("accountDetails.html", user_info=user_info)
+        current_avatar = None
+        if user_info and user_info.get("assistant"):
+            try:
+                current_avatar = mongo.db.avatar.find_one({"_id": ObjectId(user_info["assistant"])})
+            except Exception as e:
+                print(f"⚠️ Failed to fetch avatar: {e}")
+
+        return render_template("accountDetails.html", user_info=user_info, current_avatar=current_avatar)
+
 
 # Edit Account Details
 class UpdateAccountBoundary:
@@ -1291,12 +1307,17 @@ class SearchBoundary:
 
         if filter_type == 'video':
             search_results = SearchTutorialController.search_video(search_query)
-            # Normalize result fields if needed
             for v in search_results:
                 v["video_name"] = v.get("video_name", "")
                 v["title"] = v.get("title", "Untitled")
                 v["description"] = v.get("description", "No description")
                 v["username"] = v.get("username", "Unknown")
+
+                # ✅ Ensure file_id is a string for URL use
+                if "file_id" in v:
+                    v["file_id"] = str(v["file_id"])
+
+        
         elif filter_type == 'avatar':
             search_results = SearchAvatarController.search_avatar(search_query)
             for a in search_results:
