@@ -301,7 +301,7 @@ class AvatarVideoBoundary:
 
     @staticmethod
     @boundary.route("/generate_video_page", methods=["GET"])
-    def generate_video_page():
+    def generate_page():
         username = session.get("username")
         if username:
             temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
@@ -737,6 +737,7 @@ class AvatarVideoBoundary:
         except Exception as e:
             print(f"Error serving published video {file_id}: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
+    
     #This function is used to publish the video to the homepage (1 video 1 avatar)
     @boundary.route("/publish_video/<video_id>", methods=["POST"])
     def publish_video(video_id):
@@ -1122,7 +1123,14 @@ class UpdateAccountBoundary:
 
             return redirect(url_for('boundary.accDetails'))
 
-        return render_template("updateAccDetail.html", user_info=user_info)
+        current_avatar = None
+        if user_info.get("assistant"):
+            try:
+                current_avatar = mongo.db.avatar.find_one({"_id": ObjectId(user_info["assistant"])})
+            except Exception as e:
+                print("⚠️ Assistant avatar lookup failed:", e)
+
+        return render_template("updateAccDetail.html", user_info=user_info, current_avatar=current_avatar)
 
 # Change Avatar Assistant 
 class ChangeAssistantBoundary:
@@ -2109,7 +2117,14 @@ class ViewUserDetailsBoundary:
             flash("User not found.", category='error')
             return redirect(url_for('boundary.home'))
 
-        return render_template("userDetails.html", user_info=user_info)
+        current_avatar = None
+        if user_info.get("assistant"):
+            try:
+                current_avatar = mongo.db.avatar.find_one({"_id": ObjectId(user_info["assistant"])})
+            except Exception as e:
+                print("⚠️ Assistant avatar lookup failed:", e)
+
+        return render_template("userDetails.html", user_info=user_info, current_avatar=current_avatar)
     
 
 # ------------------------------------------------------------------------------------------------------- Upload Assignment
