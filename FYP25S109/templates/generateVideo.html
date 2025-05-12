@@ -40,7 +40,23 @@
     <div id="mp3UploadStatus" class="mt-3 alert" style="display: none;"></div>
   </div>
 </div>
-
+  <!-- GTTS Voice Generation -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-warning text-dark">
+      <h5 class="mb-0"><i class="fas fa-comment-dots me-2"></i>Generate Voice using Text</h5>
+    </div>
+    <div class="card-body">
+      <form id="gttsForm">
+        <div class="mb-3">
+          <textarea class="form-control" id="gttsText" rows="3" placeholder="Enter text to synthesize..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-warning">
+          <i class="fas fa-magic me-1"></i> Generate Voice
+        </button>
+      </form>
+      <div id="gttsStatus" class="mt-3 alert" style="display: none;"></div>
+    </div>
+  </div>
   <!-- Voice Recording Section -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header bg-danger text-white">
@@ -843,6 +859,42 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error('Error refreshing voices:', error);
     }
 }
+
+  document.getElementById("gttsForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = document.getElementById("gttsText").value.trim();
+    const status = document.getElementById("gttsStatus");
+
+    if (!text) {
+      showNotification("Please enter text for GTTS voice generation", "warning");
+      return;
+    }
+
+    try {
+      status.textContent = "Generating voice...";
+      status.className = "mt-3 alert alert-info";
+      status.style.display = "block";
+
+      const response = await fetch("/generate_gtts_voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showNotification("Voice generated successfully!");
+        await refreshSavedVoices();
+        document.getElementById("gttsText").value = "";
+      } else {
+        throw new Error(data.error || "Failed to generate voice");
+      }
+    } catch (err) {
+      showNotification(err.message, "danger");
+    } finally {
+      status.style.display = "none";
+    }
+  });
 
   // Enhanced Saved Voice Selection with Audio Preview
   document.querySelectorAll("input[name='audio_choice']").forEach(radio => {
