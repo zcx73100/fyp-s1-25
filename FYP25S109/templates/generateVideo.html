@@ -17,6 +17,7 @@
     Assignment ID: <code>{{ request.args.get("assignment_id") }}</code>
   </div>
   {% endif %}
+
   <!-- MP3 Upload Section -->
 <div class="card mb-4 shadow-sm">
   <div class="card-header bg-info text-white">
@@ -40,6 +41,7 @@
     <div id="mp3UploadStatus" class="mt-3 alert" style="display: none;"></div>
   </div>
 </div>
+
   <!-- GTTS Voice Generation -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header bg-warning text-dark">
@@ -57,6 +59,7 @@
       <div id="gttsStatus" class="mt-3 alert" style="display: none;"></div>
     </div>
   </div>
+  
   <!-- Voice Recording Section -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header bg-danger text-white">
@@ -875,7 +878,7 @@ document.addEventListener("DOMContentLoaded", () => {
       status.className = "mt-3 alert alert-info";
       status.style.display = "block";
 
-      const response = await fetch("/generate_voice", {
+      const response = await fetch("/generate_gtts_voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text })
