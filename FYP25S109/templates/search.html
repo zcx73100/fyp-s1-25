@@ -9,8 +9,9 @@
         {% for video in search_results %}
         <div class="col-md-4">
             <div class="card mb-3">
-                <video class="card-img-top" controls>
+                <video class="card-img-top" controls preload="metadata">
                     <source src="{{ url_for('boundary.stream_video', video_id=video.file_id) }}" type="video/mp4">
+                    Your browser does not support the video tag.
                 </video>
                 <div class="card-body">
                     <h5>{{ video.title }}</h5>

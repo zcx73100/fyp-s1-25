@@ -18,7 +18,9 @@
       method="POST" enctype="multipart/form-data" class="upload-form">
 
   <!-- Hidden Video ID if generated -->
+  {% if video_id %}
   <input type="hidden" name="video_id" value="{{ video_id }}">
+  {% endif %}
 
   <!-- Title -->
   <label for="title">Assignment Title:</label>
