@@ -265,18 +265,20 @@ class AvatarVideoBoundary:
         video_title = request.form.get("video_title", "Untitled")
         task_id = str(uuid.uuid4())
 
+        # ✅ Get classroom_id before background thread
+        avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+        if not avatar_doc:
+            flash("❌ Avatar not found.", "danger")
+            return redirect(url_for("boundary.home"))
+
+        classroom_id = avatar_doc.get("classroom_id")
+
         def background_video_generation():
             try:
                 import requests
                 from io import BytesIO
 
-                avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
-                if not avatar_doc or "file_id" not in avatar_doc:
-                    raise Exception("Avatar file not found.")
-
                 file_id = avatar_doc["file_id"]
-
-                # Prepare the actual image and audio file from GridFS
                 fs = get_fs()
                 image_file = fs.get(ObjectId(file_id))
                 audio_file = fs.get(ObjectId(audio_id))
@@ -295,7 +297,6 @@ class AvatarVideoBoundary:
                     "pose_style": 0
                 }
 
-                # Call SadTalker API (via ngrok)
                 SADTALKER_API = "https://a5ce-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
                 response = requests.post(SADTALKER_API, files=files, data=data)
 
@@ -308,11 +309,9 @@ class AvatarVideoBoundary:
                 if not video_path or not os.path.exists(video_path):
                     raise Exception(f"SadTalker returned invalid video path: {video_path}")
 
-                # ✅ Upload to GridFS
                 with open(video_path, "rb") as f:
                     fs_id = fs.put(f, filename=f"{video_title}.mp4", content_type="video/mp4")
 
-                # ✅ Store in tempvideo
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
@@ -329,6 +328,14 @@ class AvatarVideoBoundary:
                     "error": str(e),
                     "created_at": datetime.utcnow()
                 })
+
+        # ✅ Start background thread
+        from threading import Thread
+        Thread(target=background_video_generation).start()
+
+        # ✅ Return a response to Flask
+        flash("✅ Video generation started. It will appear after a few minutes.", "success")
+        return redirect(url_for("boundary.view_classroom", classroom_id=classroom_id))
 
 
     @boundary.route("/check_video/<task_id>", methods=["GET"])
@@ -2223,29 +2230,31 @@ class TeacherAssignmentBoundary:
                 video_id=video_id
             )
 
+        
         # POST: process form submission
         title       = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
         deadline    = request.form.get("deadline")
         upload_file = request.files.get("file")
-        video_id    = request.form.get("video_id")  # Hidden input from form
+        video_id    = request.form.get("video_id", "").strip()
 
+        # ✅ Require at least a file or video
         if not title or (not upload_file and not video_id):
             flash("❌ Please enter a title and upload a file or attach a video.", "danger")
             return redirect(request.url)
 
         filename = secure_filename(upload_file.filename) if upload_file else None
-
         video_oid = None
-        
-        if video_id and video_id.strip():  # ✅ check it's non-empty
-            try:
+
+        # ✅ Parse video_id only if it's present and looks like an ObjectId
+        if video_id:
+            if ObjectId.is_valid(video_id):
                 video_oid = ObjectId(video_id)
-            except Exception:
+            else:
                 flash("Invalid video ID format.", "danger")
                 return redirect(request.url)
 
-
+        # ✅ Upload assignment
         result = UploadAssignmentController.upload_assignment(
             title        = title,
             classroom_id = ObjectId(classroom_id),
