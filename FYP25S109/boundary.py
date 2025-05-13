@@ -267,18 +267,47 @@ class AvatarVideoBoundary:
 
         def background_video_generation():
             try:
+                from io import BytesIO
+                import requests
+
                 avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
                 if not avatar_doc or "file_id" not in avatar_doc:
                     raise Exception("Avatar file not found.")
 
                 file_id = avatar_doc["file_id"]
 
-                controller = GenerateVideoController()
-                video_gridfs_id = controller.generate_video(text, file_id, audio_id=audio_id, title=video_title)
+                # Prepare the actual image and audio file from GridFS
+                fs = get_fs()
+                image_file = fs.get(ObjectId(file_id))
+                audio_file = fs.get(ObjectId(audio_id))
 
-                with open(f"./results/{video_title}.mp4", "rb") as f:
-                    fs_id = get_fs().put(f, filename=f"{video_title}.mp4")
+                files = {
+                    "image_file": (image_file.filename, image_file.read(), image_file.content_type or "image/png"),
+                    "audio_file": (audio_file.filename, audio_file.read(), audio_file.content_type or "audio/mpeg")
+                }
 
+                data = {
+                    "preprocess_type": "crop",
+                    "is_still_mode": "false",
+                    "enhancer": "false",
+                    "batch_size": 2,
+                    "size_of_image": 256,
+                    "pose_style": 0
+                }
+
+                # Call SadTalker API (running locally via ngrok)
+                SADTALKER_API = "https://<your-ngrok-id>.ngrok-free.app/generate_video_fastapi"
+                response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
+
+                if response.status_code != 200:
+                    raise Exception(f"SadTalker generation failed: {response.text}")
+
+                video_bytes = BytesIO(response.content)
+
+                # Save the video to GridFS
+                fs_id = fs.put(video_bytes, filename=f"{video_title}.mp4", content_type="video/mp4")
+
+                # Save metadata to tempvideo
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
@@ -288,6 +317,7 @@ class AvatarVideoBoundary:
                     "created_at": datetime.utcnow(),
                     "is_published": False
                 })
+
             except Exception as e:
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
@@ -295,8 +325,6 @@ class AvatarVideoBoundary:
                     "created_at": datetime.utcnow()
                 })
 
-        threading.Thread(target=background_video_generation).start()
-        return jsonify(success=True, task_id=task_id)
 
     @boundary.route("/check_video/<task_id>", methods=["GET"])
     def check_video(task_id):
