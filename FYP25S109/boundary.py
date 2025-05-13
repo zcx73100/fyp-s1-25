@@ -267,8 +267,8 @@ class AvatarVideoBoundary:
 
         def background_video_generation():
             try:
-                from io import BytesIO
                 import requests
+                from io import BytesIO
 
                 avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
                 if not avatar_doc or "file_id" not in avatar_doc:
@@ -295,19 +295,24 @@ class AvatarVideoBoundary:
                     "pose_style": 0
                 }
 
-                # Call SadTalker API (running locally via ngrok)
-                SADTALKER_API = "https://<your-ngrok-id>.ngrok-free.app/generate_video_fastapi"
-                response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
+                # Call SadTalker API (via ngrok)
+                SADTALKER_API = "https://a5ce-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
+                response = requests.post(SADTALKER_API, files=files, data=data)
 
                 if response.status_code != 200:
                     raise Exception(f"SadTalker generation failed: {response.text}")
 
-                video_bytes = BytesIO(response.content)
+                result = response.json()
+                video_path = result.get("video_path")
 
-                # Save the video to GridFS
-                fs_id = fs.put(video_bytes, filename=f"{video_title}.mp4", content_type="video/mp4")
+                if not video_path or not os.path.exists(video_path):
+                    raise Exception(f"SadTalker returned invalid video path: {video_path}")
 
-                # Save metadata to tempvideo
+                # ✅ Upload to GridFS
+                with open(video_path, "rb") as f:
+                    fs_id = fs.put(f, filename=f"{video_title}.mp4", content_type="video/mp4")
+
+                # ✅ Store in tempvideo
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,

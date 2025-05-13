@@ -294,7 +294,6 @@ class GenerateVideoEntity:
         try:
             SADTALKER_API = "https://a5ce-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
 
-
             avatar_file = get_fs().get(ObjectId(avatar_id))
             audio_file = get_fs().get(ObjectId(audio_id))
 
