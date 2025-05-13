@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1>Manage Students</h1>
-<!--This page is for teachers to search, suspend, enroll/unenroll students-->
+
 <!-- Flash Messages -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -18,7 +18,6 @@
 <!-- Search Form -->
 <h2>Search Students</h2>
 <form method="get" action="{{ url_for('boundary.search_student', classroom_id=classroom._id, query=query|default('')) }}">
-    <input type="hidden" name="classroom" value="{{ classroom.classroom_name }}">
     <input type="text" name="query" placeholder="Search by username or email" required>
     <button type="submit">Search</button>
 </form>
@@ -43,24 +42,25 @@
         <td>{{ 'Suspended' if student.status == "suspended" else 'Active' }}</td>
         {% if session.get('role') != "Student" %}
         <td>
-            <form method="post" action="{{ url_for('boundary.suspend_student', username=student.username, classroom_name=classroom.classroom_name) }}" style="display:inline;">
-                {% if student.status != "suspended" %}
-                    <input type="hidden" name="classroom" value="{{ classroom.classroom_name }}">
-                    <input type="hidden" name="username" value="{{ student.username }}">
-                    <button type="submit">Suspend</button>
-                {% endif %}
+            {% if student.status != "suspended" %}
+            <form method="post" action="{{ url_for('boundary.suspend_student', classroom_id=classroom._id) }}" style="display:inline;">
+                <input type="hidden" name="username" value="{{ student.username }}">
+                <button type="submit">Suspend</button>
             </form>
-            <form method="post" action="{{ url_for('boundary.unsuspend_student', username=student.username, classroom_name=classroom.classroom_name) }}" style="display:inline;">
-                {% if student.status == "suspended" %}
-                    <input type="hidden" name="classroom" value="{{ classroom.classroom_name }}">
-                    <input type="hidden" name="username" value="{{ student.username }}">
-                    <button type="submit">Activate</button>
-                {% endif %}
+            {% endif %}
+
+            {% if student.status == "suspended" %}
+            <form method="post" action="{{ url_for('boundary.unsuspend_student', classroom_id=classroom._id) }}" style="display:inline;">
+                <input type="hidden" name="username" value="{{ student.username }}">
+                <button type="submit">Activate</button>
             </form>
+            {% endif %}
+
             <form method="get" action="{{ url_for('boundary.view_user_details', username=student.username) }}" style="display:inline;">
                 <button type="submit">View Details</button>
             </form>
-            <form method="post" action="{{ url_for('boundary.remove_student', classroom_name=classroom.classroom_name) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this student from the classroom?');">
+
+            <form method="post" action="{{ url_for('boundary.remove_student', classroom_id=classroom._id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this student from the classroom?');">
                 <input type="hidden" name="username" value="{{ student.username }}">
                 <button type="submit">Remove from Classroom</button>
             </form>
@@ -83,7 +83,7 @@
         <td>{{ student.username }}</td>
         <td>{{ student.email }}</td>
         <td>
-            <form method="post" action="{{ url_for('boundary.enroll_student', classroom_name=classroom.classroom_name) }}" style="display:inline;">
+            <form method="post" action="{{ url_for('boundary.enroll_student', classroom_id=classroom._id) }}" style="display:inline;">
                 <input type="hidden" name="username" value="{{ student.username }}">
                 <button type="submit">Enroll</button>
             </form>
