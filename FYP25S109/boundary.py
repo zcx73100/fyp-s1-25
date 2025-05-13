@@ -259,28 +259,22 @@ class AvatarVideoBoundary:
     def generate_video(avatar_id, audio_id):
         username = session.get("username")
         if not username:
-            return redirect(url_for("boundary.login"))
+            return jsonify({"success": False, "error": "Login required"}), 401
 
         text = request.form.get("text", "").strip()
         video_title = request.form.get("video_title", "Untitled")
-        task_id = str(uuid.uuid4())
 
-        # ✅ Get classroom_id before background thread
         avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
         if not avatar_doc:
-            flash("❌ Avatar not found.", "danger")
-            return redirect(url_for("boundary.home"))
-
-        classroom_id = avatar_doc.get("classroom_id")
+            return jsonify({"success": False, "error": "Avatar not found"}), 404
 
         def background_video_generation():
             try:
                 import requests
                 from io import BytesIO
 
-                file_id = avatar_doc["file_id"]
                 fs = get_fs()
-                image_file = fs.get(ObjectId(file_id))
+                image_file = fs.get(ObjectId(avatar_doc["file_id"]))
                 audio_file = fs.get(ObjectId(audio_id))
 
                 files = {
@@ -297,23 +291,18 @@ class AvatarVideoBoundary:
                     "pose_style": 0
                 }
 
-                SADTALKER_API = "https://a5ce-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
-                response = requests.post(SADTALKER_API, files=files, data=data)
+                # ✅ SadTalker FastAPI endpoint
+                SADTALKER_API = "https://ce27-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
+                response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
 
                 if response.status_code != 200:
                     raise Exception(f"SadTalker generation failed: {response.text}")
 
-                result = response.json()
-                video_path = result.get("video_path")
-
-                if not video_path or not os.path.exists(video_path):
-                    raise Exception(f"SadTalker returned invalid video path: {video_path}")
-
-                with open(video_path, "rb") as f:
-                    fs_id = fs.put(f, filename=f"{video_title}.mp4", content_type="video/mp4")
+                # ✅ Save streamed content directly to GridFS
+                video_stream = BytesIO(response.content)
+                fs_id = fs.put(video_stream, filename=f"{video_title}.mp4", content_type="video/mp4")
 
                 mongo.db.tempvideo.insert_one({
-                    "task_id": task_id,
                     "username": username,
                     "avatar_id": ObjectId(avatar_id),
                     "audio_id": ObjectId(audio_id),
@@ -324,18 +313,20 @@ class AvatarVideoBoundary:
 
             except Exception as e:
                 mongo.db.tempvideo.insert_one({
-                    "task_id": task_id,
+                    "username": username,
+                    "avatar_id": ObjectId(avatar_id),
+                    "audio_id": ObjectId(audio_id),
                     "error": str(e),
                     "created_at": datetime.utcnow()
                 })
 
-        # ✅ Start background thread
         from threading import Thread
         Thread(target=background_video_generation).start()
 
-        # ✅ Return a response to Flask
-        flash("✅ Video generation started. It will appear after a few minutes.", "success")
-        return redirect(url_for("boundary.view_classroom", classroom_id=classroom_id))
+        return jsonify({
+            "success": True,
+            "message": "✅ Video generation started. Please wait a few moments."
+        })
 
 
     @boundary.route("/check_video/<task_id>", methods=["GET"])
@@ -358,7 +349,6 @@ class AvatarVideoBoundary:
         except Exception as e:
             return f"Video not found: {e}", 404
 
-    @staticmethod
     @boundary.route("/generate_video_page", methods=["GET"])
     def generate_video_page():
         username = session.get("username")
@@ -368,20 +358,22 @@ class AvatarVideoBoundary:
 
         # 🧹 Clean up old temporary videos
         temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
+        video_previews = []
         for video in temp_videos:
             try:
-                get_fs().delete(video["video_id"])
-                mongo.db.tempvideo.delete_one({"_id": video["_id"]})
-                print(f"🗑 Temp video cleaned: {video['_id']}")
+                file_id = video["video_id"]
+                video_previews.append({
+                    "video_id": str(file_id),
+                    "title": f"Generated {video['created_at'].strftime('%Y-%m-%d %H:%M')}"
+                })
             except Exception as e:
-                print(f"⚠️ Error deleting temp video: {e}")
+                print(f"⚠️ Error processing temp video: {e}")
 
-        # ✅ Fetch available avatars and voices
         avatars = list(mongo.db.avatar.find({"username": username}))
         voices = list(mongo.db.voice_records.find({"username": username}))
 
-        return render_template("generateVideo.html", avatars=avatars, voice_records=voices)
-
+        return render_template("generateVideo.html", avatars=avatars, voice_records=voices, videos=video_previews)
+        
     @staticmethod
     @boundary.route("/save_generated_video", methods=["POST"])
     def save_generated_video():
@@ -2219,16 +2211,13 @@ class TeacherAssignmentBoundary:
                 try:
                     vid_doc = mongo.db.video.find_one({'_id': ObjectId(meta_id)})
                     if vid_doc:
-                        # Make sure to use the actual GridFS ID
-                        video_id = str(vid_doc.get('video_gridfs_id') or vid_doc.get('file_id'))
+                        raw_video_id = vid_doc.get('video_gridfs_id') or vid_doc.get('file_id')
+                        if raw_video_id and ObjectId.is_valid(str(raw_video_id)):
+                            video_id = str(raw_video_id)
                 except Exception:
                     flash("⚠️ Failed to load video preview.", "warning")
 
-            return render_template(
-                "uploadAssignment.html",
-                classroom_id=classroom_id,
-                video_id=video_id
-            )
+            return render_template("uploadAssignment.html", classroom_id=classroom_id, video_id=video_id)
 
         
         # POST: process form submission
