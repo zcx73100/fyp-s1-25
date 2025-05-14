@@ -3,6 +3,14 @@
 {% block title %}My Videos{% endblock %}
 
 {% block content %}
+<!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 <div class="container mt-4">
     <h1 class="mb-4">My Saved Videos</h1>
     <!-- 🔍 Search Form -->

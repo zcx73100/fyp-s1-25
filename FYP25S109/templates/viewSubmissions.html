@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-
+<!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 <div class="assignment-view-container">
   <h2 class="mb-3">📘 Assignment: {{ assignment.title }}</h2>
 

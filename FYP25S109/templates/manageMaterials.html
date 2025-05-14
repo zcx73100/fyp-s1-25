@@ -3,6 +3,14 @@
 {% block title %}Manage Materials{% endblock %}
 
 {% block content %}
+<!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 <div class="container mt-5">
     <h2 class="mb-4">Manage Class Materials</h2>
 
