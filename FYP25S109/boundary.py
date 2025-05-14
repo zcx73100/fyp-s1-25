@@ -2595,69 +2595,84 @@ class TeacherManageQuizBoundary:
         quiz = mongo.db.quizzes.find_one({"_id": ObjectId(quiz_id)})
         if not quiz:
             flash("Quiz not found!", "danger")
-            return redirect(url_for('boundary.manage_quizzes'))
+            return redirect(url_for('manage_quizzes'))
 
         if request.method == "POST":
+            # Handle quiz metadata
             quiz_title = request.form.get('title', '').strip()
             quiz_description = request.form.get('description', '').strip()
+            
+            if not quiz_title or not quiz_description:
+                flash("Title and description are required!", "danger")
+                return redirect(url_for('update_quiz', quiz_id=quiz_id))
 
+            # Process questions
             updated_questions = []
-            question_indices = set()
-            
-            # Get all question indices from form data
-            for key in request.form.keys():
-                if key.startswith('questions[') and '][text]' in key:
-                    idx = key.split('[')[1].split(']')[0]
-                    question_indices.add(idx)
-            
-            # Process each question
-            for idx in question_indices:
-                question_text = request.form.get(f'questions[{idx}][text]', '').strip()
-                if not question_text:  # Skip empty questions
-                    continue
-                    
-                # Get options - simplified approach
-                options = request.form.getlist(f'questions[{idx}][options][]')
-                while len(options) < 4:  # Ensure we always have 4 options
-                    options.append('')
-                    
-                correct_answer = int(request.form.get(f'questions[{idx}][correct_answer]', 0))
-                
-                # Handle image upload
+            i = 0
+            while True:
+                # Check if question exists
+                question_text = request.form.get(f'questions[{i}][text]')
+                if question_text is None:
+                    break
+
+                question_text = question_text.strip()
+                if not question_text:
+                    flash(f"Question {i+1} text cannot be empty!", "danger")
+                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+
+                # Get all 4 options
+                options = [
+                    request.form.get(f'questions[{i}][options][0]', '').strip(),
+                    request.form.get(f'questions[{i}][options][1]', '').strip(),
+                    request.form.get(f'questions[{i}][options][2]', '').strip(),
+                    request.form.get(f'questions[{i}][options][3]', '').strip()
+                ]
+
+                # Validate options
+                if any(not opt for opt in options):
+                    flash(f"All 4 options must be provided for Question {i+1}", "danger")
+                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+
+                # Validate correct answer
+                try:
+                    correct_answer = int(request.form.get(f'questions[{i}][correct_answer]', -1))
+                    if correct_answer not in {0, 1, 2, 3}:
+                        raise ValueError
+                except (ValueError, TypeError):
+                    flash(f"Invalid correct answer for Question {i+1}", "danger")
+                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+
+                # Handle image
                 image_data = None
-                image_file = request.files.get(f'questions[{idx}][image]')
+                image_file = request.files.get(f'questions[{i}][image]')
                 if image_file and image_file.filename:
+                    if not image_file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        flash("Only PNG, JPG, and JPEG images are allowed!", "danger")
+                        return redirect(url_for('update_quiz', quiz_id=quiz_id))
                     image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                else:
-                    # Try to find existing question to retain its image
-                    try:
-                        old_idx = int(idx)
-                        if old_idx < len(quiz.get('questions', [])):
-                            image_data = quiz['questions'][old_idx].get('image')
-                    except (ValueError, IndexError):
-                        pass
+                elif i < len(quiz.get('questions', [])):
+                    image_data = quiz['questions'][i].get('image')
 
                 updated_questions.append({
                     "text": question_text,
-                    "options": options[:4],  # Ensure exactly 4 options
-                    "correct_answer": max(0, min(3, correct_answer)),  # Clamp to 0-3
+                    "options": options,
+                    "correct_answer": correct_answer,
                     "image": image_data
                 })
+                i += 1
 
-            # Update quiz
+            # Update database
             mongo.db.quizzes.update_one(
                 {"_id": ObjectId(quiz_id)},
-                {
-                    "$set": {
-                        "title": quiz_title,
-                        "description": quiz_description,
-                        "questions": updated_questions
-                    }
-                }
+                {"$set": {
+                    "title": quiz_title,
+                    "description": quiz_description,
+                    "questions": updated_questions
+                }}
             )
 
             flash("Quiz updated successfully!", "success")
-            return redirect(url_for('boundary.manage_quizzes', classroom_id=quiz["classroom_id"]))
+            return redirect(url_for('manage_quizzes', classroom_id=quiz["classroom_id"]))
 
         return render_template("updateQuiz.html", quiz=quiz, quiz_id=quiz_id)
 
