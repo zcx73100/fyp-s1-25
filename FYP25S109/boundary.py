@@ -291,15 +291,19 @@ class AvatarVideoBoundary:
                     "pose_style": 0
                 }
 
-                # ✅ SadTalker FastAPI endpoint
                 SADTALKER_API = "https://ce27-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
                 response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
 
                 if response.status_code != 200:
                     raise Exception(f"SadTalker generation failed: {response.text}")
 
-                # ✅ Save streamed content directly to GridFS
-                video_stream = BytesIO(response.content)
+                # ✅ Stream content efficiently for large file
+                video_stream = BytesIO()
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        video_stream.write(chunk)
+                video_stream.seek(0)  # rewind before storing
+
                 fs_id = fs.put(video_stream, filename=f"{video_title}.mp4", content_type="video/mp4")
 
                 mongo.db.tempvideo.insert_one({
@@ -1480,7 +1484,7 @@ class UploadTutorialBoundary:
 
 # View Uploaded Videos (Multiple Videos at one time)
 class ViewUploadedVideosBoundary:
-    @boundary.route('/video/<file_id>')
+    @boundary.route('/video/<file_id>', endpoint='serve_video')
     def serve_video(file_id):
         try:
             grid_out = get_fs().get(ObjectId(file_id))
