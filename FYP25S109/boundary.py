@@ -2611,10 +2611,10 @@ class TeacherManageQuizBoundary:
 
                 question_text = question_text.strip()
                 options = [
-                    request.form.get(f'questions[{i}][options][]', ''),
                     request.form.getlist(f'questions[{i}][options][]')[0] if len(request.form.getlist(f'questions[{i}][options][]')) > 0 else '',
                     request.form.getlist(f'questions[{i}][options][]')[1] if len(request.form.getlist(f'questions[{i}][options][]')) > 1 else '',
                     request.form.getlist(f'questions[{i}][options][]')[2] if len(request.form.getlist(f'questions[{i}][options][]')) > 2 else '',
+                    request.form.getlist(f'questions[{i}][options][]')[3] if len(request.form.getlist(f'questions[{i}][options][]')) > 3 else ''
                 ]
 
                 correct_answer = request.form.get(f'questions[{i}][correct_answer]')
