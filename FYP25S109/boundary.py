@@ -2602,46 +2602,49 @@ class TeacherManageQuizBoundary:
             quiz_description = request.form.get('description', '').strip()
 
             updated_questions = []
-            i = 0
-            while True:
+            question_indices = set()
+            
+            # Get all question indices from form data
+            for key in request.form.keys():
+                if key.startswith('questions[') and '][text]' in key:
+                    idx = key.split('[')[1].split(']')[0]
+                    question_indices.add(idx)
+            
+            # Process each question
+            for idx in question_indices:
+                question_text = request.form.get(f'questions[{idx}][text]', '').strip()
+                if not question_text:  # Skip empty questions
+                    continue
+                    
+                # Get options - simplified approach
+                options = request.form.getlist(f'questions[{idx}][options][]')
+                while len(options) < 4:  # Ensure we always have 4 options
+                    options.append('')
+                    
+                correct_answer = int(request.form.get(f'questions[{idx}][correct_answer]', 0))
                 
-                question_text = request.form.get(f'questions[{i}][text]')
-                if question_text is None:
-                    break
-
-                question_text = question_text.strip()
-                options = [
-                    request.form.getlist(f'questions[{i}][options][]')[0] if len(request.form.getlist(f'questions[{i}][options][]')) > 0 else '',
-                    request.form.getlist(f'questions[{i}][options][]')[1] if len(request.form.getlist(f'questions[{i}][options][]')) > 1 else '',
-                    request.form.getlist(f'questions[{i}][options][]')[2] if len(request.form.getlist(f'questions[{i}][options][]')) > 2 else '',
-                    request.form.getlist(f'questions[{i}][options][]')[3] if len(request.form.getlist(f'questions[{i}][options][]')) > 3 else ''
-                ]
-
-                correct_answer = request.form.get(f'questions[{i}][correct_answer]')
-                if correct_answer is None:
-                    correct_answer = 0
-                else:
-                    correct_answer = int(correct_answer)
-
+                # Handle image upload
                 image_data = None
-                image_file = request.files.get(f'questions[{i}][image]')
+                image_file = request.files.get(f'questions[{idx}][image]')
                 if image_file and image_file.filename:
                     image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 else:
-                    # Retain old image if exists
-                    if i < len(quiz.get('questions', [])):
-                        image_data = quiz['questions'][i].get('image')
+                    # Try to find existing question to retain its image
+                    try:
+                        old_idx = int(idx)
+                        if old_idx < len(quiz.get('questions', [])):
+                            image_data = quiz['questions'][old_idx].get('image')
+                    except (ValueError, IndexError):
+                        pass
 
                 updated_questions.append({
                     "text": question_text,
-                    "options": options,
-                    "correct_answer": correct_answer,
+                    "options": options[:4],  # Ensure exactly 4 options
+                    "correct_answer": max(0, min(3, correct_answer)),  # Clamp to 0-3
                     "image": image_data
                 })
 
-                i += 1
-
-            # Final update
+            # Update quiz
             mongo.db.quizzes.update_one(
                 {"_id": ObjectId(quiz_id)},
                 {
