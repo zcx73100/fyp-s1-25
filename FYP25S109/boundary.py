@@ -2610,6 +2610,7 @@ class TeacherManageQuizBoundary:
                     break
 
                 question_text = question_text.strip()
+                #Changed update-quiz function
                 options = [
                     request.form.getlist(f'questions[{i}][options][]')[0] if len(request.form.getlist(f'questions[{i}][options][]')) > 0 else '',
                     request.form.getlist(f'questions[{i}][options][]')[1] if len(request.form.getlist(f'questions[{i}][options][]')) > 1 else '',
