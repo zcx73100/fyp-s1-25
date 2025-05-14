@@ -2604,7 +2604,7 @@ class TeacherManageQuizBoundary:
             updated_questions = []
             i = 0
             while True:
-                # Check if this question index exists in the form
+                
                 question_text = request.form.get(f'questions[{i}][text]')
                 if question_text is None:
                     break
