@@ -291,8 +291,12 @@ class AvatarVideoBoundary:
                     "pose_style": 0
                 }
 
-                SADTALKER_API = "https://ce27-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
+                SADTALKER_API = os.getenv("SADTALKER_API_URL")
+                    if not SADTALKER_API:
+                        raise ValueError("SADTALKER_API_URL environment variable is not set")
+                    
                 response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
+               
 
                 if response.status_code != 200:
                     raise Exception(f"SadTalker generation failed: {response.text}")
