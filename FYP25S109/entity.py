@@ -292,21 +292,24 @@ class GenerateVideoEntity:
 
     def generate_video(self, avatar_id, audio_id, video_title="Generated Video"):
         try:
-            import os, time
+            import os
+            from io import BytesIO
+
             SADTALKER_API = os.getenv("SADTALKER_API_URL")
             if not SADTALKER_API:
                 raise ValueError("❌ Environment variable 'SADTALKER_API_URL' is not set")
-    
+
             avatar_file = get_fs().get(ObjectId(avatar_id))
             audio_file = get_fs().get(ObjectId(audio_id))
-    
+
             avatar_bytes = BytesIO(avatar_file.read())
             audio_bytes = BytesIO(audio_file.read())
-    
+
             files = {
                 "image_file": ("avatar.png", avatar_bytes, "image/png"),
                 "audio_file": ("audio.wav", audio_bytes, "audio/wav")
             }
+
             data = {
                 "preprocess_type": "crop",
                 "is_still_mode": "false",
@@ -315,43 +318,33 @@ class GenerateVideoEntity:
                 "size_of_image": "256",
                 "pose_style": "0"
             }
-    
-            response = requests.post(SADTALKER_API, files=files, data=data)
-    
+
+            response = requests.post(SADTALKER_API, files=files, data=data, stream=True, timeout=60)
+
             if response.status_code != 200:
                 print("❌ SadTalker failed:", response.text)
                 return None
-    
-            result = response.json()
-            video_path = result.get("video_path")
-            safe_video_path = os.path.normpath(video_path.strip())
-    
-            for i in range(5):
-                if os.path.exists(safe_video_path):
-                    break
-                print(f"[WAIT] Video not found yet, retrying ({i+1}/5)...")
-                time.sleep(0.2)
-            else:
-                print(f"❌ ERROR: video does not exist at {safe_video_path}")
-                return None
-    
-            with open(safe_video_path, "rb") as vf:
-                video_bytes = BytesIO(vf.read())
-    
+
+            # Stream video content into memory
+            video_stream = BytesIO()
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    video_stream.write(chunk)
+            video_stream.seek(0)
+
             video_id = get_fs().put(
-                video_bytes,
-                filename=os.path.basename(safe_video_path),
+                video_stream,
+                filename=f"{video_title}.mp4",
                 content_type="video/mp4",
                 metadata={"username": session.get("username")}
             )
-    
-            os.remove(safe_video_path)
-    
+
             return video_id
-    
+
         except Exception as e:
             print(f"❌ Error during video generation: {e}")
             return None
+
 
     @staticmethod    
     def get_videos(username):
