@@ -292,14 +292,17 @@ class GenerateVideoEntity:
 
     def generate_video(self, avatar_id, audio_id, video_title="Generated Video"):
         try:
-            SADTALKER_API = "https://ce27-2406-3003-2060-1fbb-89f3-a705-dd79-ebe1.ngrok-free.app/generate_video_fastapi"
-
+            import os, time
+            SADTALKER_API = os.getenv("SADTALKER_API_URL")
+            if not SADTALKER_API:
+                raise ValueError("❌ Environment variable 'SADTALKER_API_URL' is not set")
+    
             avatar_file = get_fs().get(ObjectId(avatar_id))
             audio_file = get_fs().get(ObjectId(audio_id))
-
+    
             avatar_bytes = BytesIO(avatar_file.read())
             audio_bytes = BytesIO(audio_file.read())
-
+    
             files = {
                 "image_file": ("avatar.png", avatar_bytes, "image/png"),
                 "audio_file": ("audio.wav", audio_bytes, "audio/wav")
@@ -312,17 +315,17 @@ class GenerateVideoEntity:
                 "size_of_image": "256",
                 "pose_style": "0"
             }
-
+    
             response = requests.post(SADTALKER_API, files=files, data=data)
-
+    
             if response.status_code != 200:
                 print("❌ SadTalker failed:", response.text)
                 return None
-
+    
             result = response.json()
             video_path = result.get("video_path")
             safe_video_path = os.path.normpath(video_path.strip())
-
+    
             for i in range(5):
                 if os.path.exists(safe_video_path):
                     break
@@ -331,21 +334,21 @@ class GenerateVideoEntity:
             else:
                 print(f"❌ ERROR: video does not exist at {safe_video_path}")
                 return None
-
+    
             with open(safe_video_path, "rb") as vf:
                 video_bytes = BytesIO(vf.read())
-
+    
             video_id = get_fs().put(
                 video_bytes,
                 filename=os.path.basename(safe_video_path),
                 content_type="video/mp4",
                 metadata={"username": session.get("username")}
             )
-
+    
             os.remove(safe_video_path)
-
+    
             return video_id
-
+    
         except Exception as e:
             print(f"❌ Error during video generation: {e}")
             return None
