@@ -2598,7 +2598,33 @@ class TeacherManageQuizBoundary:
             return redirect(url_for('manage_quizzes'))
 
         if request.method == "POST":
-            # Handle quiz metadata
+            # Debug output
+            debug_info = {
+                'form_data': {k: v for k, v in request.form.items()},
+                'files': {k: v.filename for k, v in request.files.items()}
+            }
+            print("DEBUG - Form Data:", debug_info)
+
+            # Check if this is a delete request
+            if 'delete_question' in request.form:
+                try:
+                    delete_index = int(request.form['delete_question'])
+                    questions = quiz.get('questions', [])
+                    if 0 <= delete_index < len(questions):
+                        questions.pop(delete_index)
+                        mongo.db.quizzes.update_one(
+                            {"_id": ObjectId(quiz_id)},
+                            {"$set": {"questions": questions}}
+                        )
+                        flash("Question deleted successfully!", "success")
+                    else:
+                        flash("Invalid question index for deletion!", "danger")
+                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                except ValueError:
+                    flash("Invalid deletion request!", "danger")
+                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+
+            # Process quiz update
             quiz_title = request.form.get('title', '').strip()
             quiz_description = request.form.get('description', '').strip()
             
@@ -2610,7 +2636,7 @@ class TeacherManageQuizBoundary:
             updated_questions = []
             i = 0
             while True:
-                # Check if question exists
+                # Check if question exists in form
                 question_text = request.form.get(f'questions[{i}][text]')
                 if question_text is None:
                     break
@@ -2642,16 +2668,20 @@ class TeacherManageQuizBoundary:
                     flash(f"Invalid correct answer for Question {i+1}", "danger")
                     return redirect(url_for('update_quiz', quiz_id=quiz_id))
 
-                # Handle image
+                # Handle image - keep existing or upload new
                 image_data = None
                 image_file = request.files.get(f'questions[{i}][image]')
+                
                 if image_file and image_file.filename:
+                    # New image uploaded
                     if not image_file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                         flash("Only PNG, JPG, and JPEG images are allowed!", "danger")
                         return redirect(url_for('update_quiz', quiz_id=quiz_id))
                     image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                elif i < len(quiz.get('questions', [])):
-                    image_data = quiz['questions'][i].get('image')
+                elif request.form.get(f'questions[{i}][existing_image]') == 'true':
+                    # Keep existing image if it exists
+                    if i < len(quiz.get('questions', [])) and 'image' in quiz['questions'][i]:
+                        image_data = quiz['questions'][i]['image']
 
                 updated_questions.append({
                     "text": question_text,
@@ -2661,22 +2691,66 @@ class TeacherManageQuizBoundary:
                 })
                 i += 1
 
+            if not updated_questions:
+                flash("Quiz must have at least one question!", "danger")
+                return redirect(url_for('update_quiz', quiz_id=quiz_id))
+
             # Update database
             mongo.db.quizzes.update_one(
                 {"_id": ObjectId(quiz_id)},
                 {"$set": {
                     "title": quiz_title,
                     "description": quiz_description,
-                    "questions": updated_questions
+                    "questions": updated_questions,
+                    "updated_at": datetime.utcnow()
                 }}
             )
 
             flash("Quiz updated successfully!", "success")
             return redirect(url_for('manage_quizzes', classroom_id=quiz["classroom_id"]))
 
-        return render_template("updateQuiz.html", quiz=quiz, quiz_id=quiz_id)
+        # For GET requests, include debug info in template
+        debug_data = {
+            'request_method': request.method,
+            'quiz_id': quiz_id,
+            'existing_questions': len(quiz.get('questions', [])) if quiz else 0,
+            'form_fields': list(request.form.keys()) if request.method == "POST" else None,
+            'files_uploaded': list(request.files.keys()) if request.method == "POST" else None
+        }
 
+        # Add this to your template context
+        debug_info = {
+            'backend_debug': debug_data,
+            'request_method': request.method,
+            'current_time': datetime.utcnow().isoformat()
+        }
 
+        # Then include it in your render_template call
+        return render_template("updateQuiz.html", 
+                            quiz=quiz, 
+                            quiz_id=quiz_id, 
+                            debug_info=debug_info)
+        return render_template("updateQuiz.html", quiz=quiz, quiz_id=quiz_id, debug_info=debug_info)
+
+    @boundary.route('/delete_question/<quiz_id>/<question_index>', methods=['POST'])
+    def delete_question(quiz_id, question_index):
+        quiz = mongo.db.quizzes.find_one({"_id": ObjectId(quiz_id)})
+        if not quiz:
+            flash("Quiz not found!", "danger")
+            return redirect(url_for('manage_quizzes'))
+
+        questions = quiz.get("questions", [])
+        if 0 <= int(question_index) < len(questions):
+            questions.pop(int(question_index))
+            mongo.db.quizzes.update_one(
+                {"_id": ObjectId(quiz_id)},
+                {"$set": {"questions": questions}}
+            )
+            flash("Question deleted successfully!", "success")
+        else:
+            flash("Invalid question index!", "danger")
+
+        return redirect(request.referrer)
 
 
 
