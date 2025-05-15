@@ -293,7 +293,8 @@ class AvatarVideoBoundary:
 
                 SADTALKER_API = os.getenv("SADTALKER_API_URL")
                 if not SADTALKER_API:
-                        raise ValueError("SADTALKER_API_URL environment variable is not set")
+                    raise ValueError("SADTALKER_API_URL environment variable is not set")
+
                     
                 response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
                
