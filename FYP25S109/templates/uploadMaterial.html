@@ -35,23 +35,19 @@
             <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" required>
         </div>
 
-        {% if videos %}
         <div class="mb-3">
-
             <!-- 🔗 Button to open generate video page -->
-             
             <div class="mt-2">
                 <small class="form-text text-muted">
                     Want to add a talking video to this material? Generate one separately below.
                 </small>
-
                 <a href="{{ url_for('boundary.generate_video_redirect') }}?source=material_upload&classroom_id={{ classroom_id }}" 
                 class="btn btn-outline-primary btn-sm" target="_blank">
                     ➕ Generate New Video
                 </a>
             </div>
         </div>
-        {% endif %}
+
 
 
         <button type="submit" class="btn btn-primary">Upload Material</button>
