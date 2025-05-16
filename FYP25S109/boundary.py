@@ -353,6 +353,41 @@ class AvatarVideoBoundary:
         })
         return jsonify(success=True, deleted_count=result.deleted_count)
     
+    # Generate Video for Chatbot
+    boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
+    def generate_video_for_chatbot(avatar_id, audio_id):
+        username = session.get("username")
+        if not username:
+            return jsonify({"success": False, "error": "Not logged in"}), 401
+
+        try:
+            # ✅ Validate Avatar
+            avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+            if not avatar_doc:
+                return jsonify({"success": False, "error": "Avatar not found"}), 404
+            file_id = avatar_doc["file_id"]
+
+            # ✅ Call SadTalker
+            controller = GenerateVideoController()
+            video_gridfs_id = controller.generate_video(
+                text="",  # Not needed for chatbot
+                avatar_id=file_id,
+                audio_id=audio_id,
+                title=None
+            )
+
+            if not video_gridfs_id:
+                return jsonify({"success": False, "error": "Video generation failed"}), 500
+
+            return jsonify({
+                "success": True,
+                "video_url": f"/stream_video/{video_gridfs_id}"
+            })
+
+        except Exception as e:
+            print("❌ Error in generate_video_for_chatbot:", e)
+            return jsonify({"success": False, "error": str(e)}), 500
+
 
     @boundary.route("/check_video/<task_id>", methods=["GET"])
     def check_video(task_id):
