@@ -5,6 +5,9 @@ from flask_pymongo import PyMongo
 import os
 from . import mongo
 from bson import ObjectId
+from .controller import GenerateVideoController
+
+
 
 # Configuration for the chatbot API
 API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -15,15 +18,92 @@ chatbot = Blueprint('chatbot', __name__)
 
 # Boundary Layer (routes)
 class ChatbotBoundary:
-    @chatbot.route('/chatbot')
+    @chatbot.route("/chatbot")
     def chatbot_page():
-        if 'username' not in session:
-            return redirect(url_for('boundary.login'))  
-        
-        chatbot_chats = mongo.db.chatbot_chats.find({"username": session['username']}).sort("timestamp", -1).limit(10)
-        user = mongo.db.useraccount.find_one({"username": session['username']},{})
+        username = session.get("username")
+        if not username:
+            return redirect("/login")  # or your auth check
 
-        return render_template('chatbot_page.html',chatbot_chats=chatbot_chats,user=user)
+        user_info = mongo.db.useraccount.find_one({"username": username})
+        assistant_avatar = None
+
+        if user_info and "assistant" in user_info:
+            avatar_id = user_info["assistant"].get("avatar_id")
+            if avatar_id:
+                assistant_avatar = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+
+        chatbot_chats = list(mongo.db.chatbot_chats.find({"username": username}))
+
+        return render_template(
+            "chatbot_page.html",
+            user=user_info,
+            chatbot_chats=chatbot_chats,
+            assistant_avatar=assistant_avatar
+        )
+    
+    @chatbot.route("/chatbot/process", methods=["POST"])
+    def chatbot_process():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("boundary.login"))
+
+        text = request.form.get("text", "").strip()
+        lang = request.form.get("lang", "en")
+        gender = request.form.get("gender", "female")
+
+        if not text:
+            return "❌ No text provided", 400
+
+        # ✅ Generate voice
+        controller = GenerateVideoController()
+        audio_id = controller.generate_voice(text, lang, gender)
+        if not audio_id:
+            return "❌ Voice generation failed", 500
+
+        # ✅ Redirect to SadTalker-compatible route with audio_id
+        return redirect(url_for("boundary.generate_video_from_session_post", audio_id=audio_id, text=text))
+
+
+
+
+    @chatbot.route('/select_avatar/assign', methods=['POST'])
+    def assign_avatar():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("chatbot.chatbot_page"))  # or your login page
+
+        avatar_id = request.form.get("avatar_id")
+        tts_voice = request.form.get("tts_voice")
+
+        if not avatar_id or not tts_voice:
+            return "Missing avatar or TTS voice", 400
+
+        # Save to user account
+        mongo.db.useraccount.update_one(
+            {"username": session["username"]},
+            {"$set": {
+                "assistant": {
+                    "avatar_id": ObjectId(avatar_id),
+                    "tts_voice": tts_voice
+                }
+            }}
+        )
+
+        return redirect(url_for("chatbot.chatbot_page"))
+
+    @chatbot.route('/select_avatar')
+    def select_avatar():
+        avatars = list(mongo.db.avatar.find({"username": "admin"}))
+        tts_options = ["male_en", "female_en", "neutral_en",
+        "male_es", "female_es",
+        "female_fr", "neutral_fr",
+        "neutral_de",
+        "neutral_it",
+        "neutral_ja",
+        "neutral_ko",
+        "neutral_id"]  # adjust based on your supported voices
+        
+        return render_template("select_avatar.html", avatars=avatars, tts_options=tts_options)
 
     @chatbot.route('/api/chat', methods=['POST'])
     def handle_chat():
