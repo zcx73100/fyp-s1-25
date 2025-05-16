@@ -842,36 +842,87 @@ class AvatarVideoBoundary:
     @boundary.route("/publish_video/<video_id>", methods=["POST"])
     def publish_video(video_id):
         try:
-            video = mongo.db.generated_videos.find_one({"_id": ObjectId(video_id)})
+            username = session.get("username")
+            if not username:
+                flash("You must be logged in.", "danger")
+                return redirect(url_for("boundary.login"))
 
-            if video and video["username"] == session.get("username"):
-                avatar_id = video.get("avatar_id")
+            # First: Try finding the video in tempvideo (draft)
+            temp_video = mongo.db.tempvideo.find_one({"video_id": video_id, "username": username})
 
-                # Check if the user has already published a video with this avatar
-                existing_published = mongo.db.generated_videos.find_one({
-                    "username": session.get("username"),
+            if temp_video:
+                avatar_id = temp_video.get("avatar_id")
+
+                # Prevent duplicate publishes for same avatar
+                existing = mongo.db.generated_videos.find_one({
+                    "username": username,
                     "avatar_id": avatar_id,
-                    "is_published": True,
-                    "_id": {"$ne": ObjectId(video_id)}  # exclude current video
+                    "is_published": True
                 })
 
-                if existing_published:
-                    flash("You have already published a video using this avatar.", "warning")
+                if existing:
+                    flash("You already have a published video using this avatar.", "warning")
                     return redirect(url_for("boundary.my_videos"))
 
-                # Proceed with publishing
+                # Prepare and insert into generated_videos
+                new_video = dict(temp_video)
+                new_video.pop("_id", None)
+                new_video["is_published"] = True
+                new_video["published_at"] = datetime.utcnow()
+
+                mongo.db.generated_videos.insert_one(new_video)
+                mongo.db.tempvideo.delete_one({"video_id": video_id})
+
+                flash("Draft video published successfully!", "success")
+                return redirect(url_for("boundary.my_videos"))
+
+            # Else, try updating an existing one in generated_videos
+            video = mongo.db.generated_videos.find_one({"_id": ObjectId(video_id), "username": username})
+            if video:
+                avatar_id = video.get("avatar_id")
+
+                existing = mongo.db.generated_videos.find_one({
+                    "username": username,
+                    "avatar_id": avatar_id,
+                    "is_published": True,
+                    "_id": {"$ne": ObjectId(video_id)}
+                })
+
+                if existing:
+                    flash("You already have a published video using this avatar.", "warning")
+                    return redirect(url_for("boundary.my_videos"))
+
                 mongo.db.generated_videos.update_one(
                     {"_id": ObjectId(video_id)},
                     {"$set": {"is_published": True}}
                 )
                 flash("Video published successfully!", "success")
             else:
-                flash("Video not found or unauthorized action.", "danger")
+                flash("Video not found.", "danger")
+
         except Exception as e:
-            flash(f"An error occurred: {str(e)}", "danger")
+            print("[Publish Error]", e)
+            flash("An error occurred while publishing the video.", "danger")
 
         return redirect(url_for("boundary.my_videos"))
-    
+
+        
+    @boundary.route("/unpublish_video/<video_id>", methods=["POST"])
+    def unpublish_video(video_id):
+        try:
+            if 'username' not in session:
+                flash("You must be logged in to perform this action.", "danger")
+                return redirect(url_for("boundary.login"))
+
+            mongo.db.generated_videos.update_one(
+                {"_id": ObjectId(video_id), "username": session['username']},
+                {"$set": {"is_published": False}}
+            )
+            flash("Video unpublished successfully!", "success")
+        except Exception as e:
+            flash(f"Failed to unpublish video: {str(e)}", "danger")
+        return redirect(url_for("boundary.my_videos"))
+
     @boundary.route('/download_video/<video_id>')
     def download_video(video_id):
         try:
@@ -3131,7 +3182,7 @@ class StudentAssignmentBoundary:
         else:
             flash("Error deleting submission.", "danger")
 
-        return redirect(url_for('boundary.submit_assignment',
+        return redirect(url_for('boundary.view_assignment',
                                 assignment_id=assignment_id,
                                 filename=""))
 
