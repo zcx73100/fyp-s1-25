@@ -49,25 +49,133 @@
 </div>
 <input id="tts-audio-id" name="audio_id" type="hidden"/>
 <script>
-function handleTTS(text) {
-    fetch('/generate_voice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const audioElement = document.getElementById('tts-audio');
-            audioElement.src = '/stream_audio/' + data.audio_id;
-            document.getElementById('tts-preview').style.display = 'block';
-            document.getElementById('tts-audio-id').value = data.audio_id;
-            audioElement.play();
-        } else {
-            alert('TTS generation failed: ' + data.error);
+document.addEventListener("DOMContentLoaded", () => {
+    const elements = {
+        notification: document.getElementById('notification'),
+        recordedAudio: document.getElementById('recordedAudio'),
+        recordedAudioContainer: document.getElementById('recorded-audio-container'),
+        recordingStatus: document.getElementById('recording-status'),
+        videoPreviewContainer: document.getElementById('video-preview-container'),
+        videoPreview: document.getElementById('video-preview'),
+        progressContainer: document.getElementById('progress-container'),
+        progressBar: document.getElementById('progress-bar'),
+        progressStatus: document.getElementById('progress-status'),
+        progressPercent: document.getElementById('progress-percent'),
+        generateVideoBtn: document.getElementById('generateVideoBtn'),
+        videoIdInput: document.getElementById('videoIdInput')
+    };
+
+    function showNotification(message, type = 'success') {
+        const note = elements.notification;
+        note.textContent = message;
+        note.className = `alert alert-${type} text-center`;
+        note.style.display = 'block';
+        setTimeout(() => note.style.display = 'none', 5000);
+    }
+
+    async function pollForVideo(taskId) {
+        if (!elements) {
+            console.error('DOM not ready: elements undefined');
+            return;
+        }
+
+        elements.progressStatus.textContent = 'Video is being processed...';
+        let attempts = 0;
+
+        const interval = setInterval(async () => {
+            attempts++;
+            try {
+                const res = await fetch(`/check_video/${taskId}`);
+                const data = await res.json();
+
+                if (data.ready) {
+                    clearInterval(interval);
+
+                    if (!data.video_id) {
+                        showNotification("Error: Missing video ID.", "danger");
+                        return;
+                    }
+
+                    elements.videoIdInput.value = data.video_id;
+                    elements.videoPreview.innerHTML = `
+                        <video width="640" controls autoplay class="rounded shadow">
+                            <source src="/stream_video/${data.video_id}" type="video/mp4">
+                            Your browser does not support HTML5 video.
+                        </video>
+                    `;
+                    elements.videoPreviewContainer.style.display = 'block';
+                    elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
+
+                    elements.progressBar.style.width = '100%';
+                    elements.progressPercent.textContent = '100%';
+                    elements.progressStatus.textContent = 'Video ready!';
+                } else {
+                    const percent = Math.min(90, attempts * 10);
+                    elements.progressBar.style.width = `${percent}%`;
+                    elements.progressPercent.textContent = `${percent}%`;
+                }
+            } catch (err) {
+                clearInterval(interval);
+                showNotification("Polling failed: " + err.message, "danger");
+            }
+        }, 5000);
+    }
+
+    elements.generateVideoBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        const avatar = document.querySelector("input[name='avatar_id']:checked");
+        const audioChoice = document.querySelector("input[name='audio_choice']:checked");
+        const videoTitle = document.getElementById('videoTitle').value.trim();
+
+        if (!audioChoice) return showNotification('Please select or record an audio first!', 'danger');
+        if (!avatar) return showNotification('Please select an avatar!', 'danger');
+        if (!videoTitle) return showNotification('Please enter a video title!', 'danger');
+
+        const formData = new FormData();
+        formData.append('avatar_id', avatar.value);
+        formData.append('audio_id', audioChoice.value);
+        formData.append('video_title', videoTitle);
+        formData.append('source', "{{ request.args.get('source') }}");
+        formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
+        formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
+
+        elements.progressContainer.style.display = 'block';
+        elements.progressBar.style.width = '0%';
+        elements.progressPercent.textContent = '0%';
+        elements.progressStatus.textContent = 'Starting video generation...';
+        elements.generateVideoBtn.disabled = true;
+
+        try {
+            const response = await fetch(`/generate_video/${avatar.value}/${audioChoice.value}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (!data.success || !data.task_id) {
+                showNotification("Video generation failed: " + (data.error || "No task ID"), "danger");
+                return;
+            }
+
+            await fetch('/save_generated_video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    avatar_id: avatar.value,
+                    audio_id: audioChoice.value,
+                    video_id: data.video_id
+                })
+            });
+
+            pollForVideo(data.task_id);
+        } catch (error) {
+            showNotification(error.message, 'danger');
+        } finally {
+            elements.generateVideoBtn.disabled = false;
         }
     });
-}
+});
 </script>
 Generate Voice using Text</h5>
 </div>
