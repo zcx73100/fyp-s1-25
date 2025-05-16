@@ -14,7 +14,7 @@ import datetime
 from datetime import timedelta,datetime
 from flask import Flask, send_file, Response
 from gradio_client import Client
-from FYP25S109.controller import 
+from FYP25S109.controller import *
 from FYP25S109.entity import * 
 from bson.errors import InvalidId
 from io import BytesIO
