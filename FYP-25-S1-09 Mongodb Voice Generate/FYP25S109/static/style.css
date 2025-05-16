@@ -1,0 +1,200 @@
+/* ========================= */
+/* ✅ FORM CONTAINER STYLES */
+/* ========================= */
+.formContainer {
+    max-width: 500px; /* Limit form width for better readability */
+    margin: 50px auto; /* Center the form vertically and horizontally */
+    padding: 30px; /* Add padding inside the form container */
+    background-color: #ffffff; /* White background for the form */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.formContainer h1 {
+    text-align: center; /* Center the heading */
+    margin-bottom: 20px; /* Add spacing below the heading */
+    font-size: 2rem; /* Increase font size for emphasis */
+    color: #212529; /* Dark text color */
+}
+
+/* ========================= */
+/* ✅ FORM STYLES */
+/* ========================= */
+.forms {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Add spacing between form elements */
+}
+
+.mb-3 {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Add spacing between label and input */
+}
+
+.mb-3 label {
+    font-size: 1rem; /* Label font size */
+    color: #495057; /* Slightly darker text color */
+    font-weight: 500; /* Medium font weight */
+}
+
+.mb-3 input {
+    padding: 10px; /* Add padding to inputs */
+    border: 1px solid #ced4da; /* Light border */
+    border-radius: 5px; /* Rounded corners */
+    font-size: 1rem; /* Input text size */
+    color: #212529; /* Dark text color */
+    transition: border-color 0.3s ease; /* Smooth transition for focus */
+}
+
+.mb-3 input:focus {
+    border-color: #80bdff; /* Highlight border on focus */
+    outline: none; /* Remove default outline */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.25); /* Add a subtle glow */
+}
+
+/* ========================= */
+/* ✅ BUTTON STYLES */
+/* ========================= */
+.centerContainer {
+    display: flex;
+    justify-content: center; /* Center the button */
+    margin-top: 20px; /* Add spacing above the button */
+}
+
+.centerContainer button {
+    padding: 10px 20px; /* Add padding to the button */
+    background-color: #007bff; /* Primary button color */
+    color: #ffffff; /* White text */
+    border: none; /* Remove border */
+    border-radius: 5px; /* Rounded corners */
+    font-size: 1rem; /* Button text size */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+.centerContainer button:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+}
+
+/* ========================= */
+/* ✅ RESPONSIVE ADJUSTMENTS */
+/* ========================= */
+@media (max-width: 600px) {
+    .formContainer {
+        margin: 20px; /* Reduce margin on smaller screens */
+        padding: 20px; /* Reduce padding on smaller screens */
+    }
+
+    .formContainer h1 {
+        font-size: 1.5rem; /* Smaller heading on smaller screens */
+    }
+
+    .mb-3 input {
+        font-size: 0.9rem; /* Smaller input text on smaller screens */
+    }
+
+    .centerContainer button {
+        font-size: 0.9rem; /* Smaller button text on smaller screens */
+    }
+}
+
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+}
+
+.video-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    text-align: center;
+}
+
+.video-card video {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+}
+
+.avatar-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    text-align: center;
+}
+
+.avatar-card img {
+    width: 150px;  /* Fixed width */
+    height: 150px; /* Fixed height */
+    object-fit: cover; /* Ensures image fills the area without distortion */
+    border-radius: 50%; /* Makes the avatar circular */
+}
+
+.delete-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+.classroom-card{
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    text-align: center;
+}
+
+
+#createVideoBtn {
+    position: fixed;
+    top: 50px;
+    right: 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 50px;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, transform 0.2s ease-in-out;
+    z-index: 1000;
+}
+
+#createVideoBtn i {
+    margin-right: 5px;
+}
+
+#createVideoBtn:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+
+#progress-bar {
+    transition: width 0.5s ease-in-out;
+}

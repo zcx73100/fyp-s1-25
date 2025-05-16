@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Create User (Admin){% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="text-center">Create a New User</h2>
+
+            <!-- Flash messages for errors/success -->
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Signup Form -->
+            <form action="{{ url_for('boundary.create_account_admin') }}" method="POST">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">First Name</label>
+                    <input type="text" id="name" name="name" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="surname" class="form-label">Last Name</label>
+                    <input type="text" id="surname" name="surname" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="date_of_birth" class="form-label">Date of Birth</label>
+                    <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password1" class="form-label">Password</label>
+                    <input type="password" id="password1" name="password1" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password2" class="form-label">Confirm Password</label>
+                    <input type="password" id="password2" name="password2" class="form-control" required>
+                </div>
+
+                <!-- Role Selection (Only for Admin) -->
+                <div class="mb-3">
+                    <label for="role" class="form-label">Select Role</label>
+                    <select id="role" name="role" class="form-select" required>
+                        <option value="Admin">Admin</option>
+                        <option value="Teacher">Teacher</option>
+                        <option value="Student">Student</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Create Account</button>
+            </form>
+
+            <div class="text-center mt-3">
+                <a href="{{ url_for('boundary.home') }}" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ✅ Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+{% endwith %}
+<h2 class="mb-4">📋 Manage Quizzes</h2>
+
+<a href="{{ url_for('boundary.upload_quiz', classroom_id=classroom_id) }}" class="btn btn-primary mb-3">➕ Create New Quiz</a>
+
+<hr class="my-4">
+
+<h3 class="mb-3">📚 Existing Quizzes</h3>
+
+{% if quizzes %}
+<div class="quiz-grid">
+    {% for quiz in quizzes %}
+        <div class="quiz-card">
+            <h5>📝 {{ quiz.title or "Untitled Quiz" }}</h5>
+            <p>{{ quiz.description or "No description provided." }}</p>
+            <div class="quiz-actions">
+                <a href="{{ url_for('boundary.view_quiz', quiz_id=quiz._id) }}" class="btn btn-outline-info btn-sm">🔍 View</a>
+                <form action="{{ url_for('boundary.update_quiz', quiz_id=quiz._id) }}" method="GET" style="display:inline;">
+                    <button type="submit" class="btn btn-outline-warning btn-sm">✏️ Edit</button>
+                </form>
+                <form action="{{ url_for('boundary.delete_quiz', quiz_id=quiz._id) }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">🗑️ Delete</button>
+                </form>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No quizzes available.</p>
+{% endif %}
+
+<a href="{{ url_for('boundary.view_classroom', classroom_id=classroom_id) }}" class="btn btn-secondary mt-5">⬅ Back to Classroom</a>
+
+<style>
+.quiz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.quiz-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s ease-in-out;
+}
+
+.quiz-card:hover {
+    transform: translateY(-5px);
+}
+
+.quiz-card h5 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.quiz-card p {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.quiz-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+}
+</style>
+{% endblock %}

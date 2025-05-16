@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{{ quiz.title }}</h2>
+<p><strong>Description:</strong> {{ quiz.description }}</p>
+
+<h3>Questions:</h3>
+<ul>
+    {% for question in quiz.questions %}
+    <li>
+        <strong>{{ question.text }}</strong>
+
+        {% if question.image %}
+        <div>
+            <img src="data:image/png;base64,{{ question.image }}" alt="Question Image"
+                 style="max-width: 300px; margin: 10px 0;">
+        </div>
+        {% endif %}
+
+        <ul>
+            {% set correct_index = question.correct_answer | int - 1 %}
+            {% for option in question.options %}
+                <li{% if loop.index0 == correct_index %} style="color: green; font-weight: bold;"{% endif %}>
+                    {{ option }}
+                </li>
+            {% endfor %}
+        </ul>
+
+        <p>
+            <strong>Correct Answer:</strong>
+            {% if correct_index >= 0 and correct_index < question.options|length %}
+                {{ question.options[correct_index] }}
+            {% else %}
+                <span style="color: red;">Error: Invalid or missing correct answer</span>
+            {% endif %}
+        </p>
+    </li>
+    {% endfor %}
+</ul>
+
+<a href="{{ url_for('boundary.manage_quizzes', classroom_id=quiz.classroom_id) }}" class="btn btn-primary">Back to Quizzes</a>
+{% endblock %}

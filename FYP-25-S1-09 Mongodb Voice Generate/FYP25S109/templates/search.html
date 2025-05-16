@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2 style="text-align:center">Search Results</h2>
+
+    {% if filter_type == "video" %}
+        <h3 style="text-align:center">Tutorial Videos</h3>
+        <div class="video-grid">
+            {% if search_results %}
+                {% for video in search_results %}
+                <div class="video-card">
+                    <video controls>
+                        <source src="{{ url_for('static', filename='uploads/videos/' + video.video_name) }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <h5>Name: {{ video.title }}</h5>  
+                    <h5>Description: {{video.description}}</h5>
+                    <h5>Uploaded By: {{ video.username }}</h5>  
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align:center">No videos found matching your search.</p>
+            {% endif %}
+        </div>
+
+    {% elif filter_type == "avatar" %}
+        <h3 style="text-align:center">Avatars</h3>
+        <div class="avatar-grid">
+            {% if search_results %}
+                {% for avatar in search_results %}
+                    <div class="avatar-card" style="text-align:center;">
+                        <img src="{{ url_for('static', filename=avatar.file_path) }}" alt="Avatar" class="avatar-img" width="150">
+                        <h5>{{ avatar.avatarname }}</h5>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align:center">No avatars found matching your search.</p>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <p style="text-align:center">Invalid search filter.</p>
+    {% endif %}
+{% endblock %}

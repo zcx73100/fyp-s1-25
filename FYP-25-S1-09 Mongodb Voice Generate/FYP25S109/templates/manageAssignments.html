@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Assignments{% endblock %}
+
+{% block content %}
+<!-- ✅ Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+{% endwith %}
+<div class="container mt-5">
+    <h2>Manage Assignments</h2>
+
+    <!-- Search Form -->
+    <form method="POST" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Search assignments..." 
+                   value="{{ request.form.get('search', '') }}">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+
+    <!-- Assignments Table -->
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Deadline</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for assignment in assignments %}
+            <tr>
+                <td>{{ assignment.title }}</td>
+                <td>{{ assignment.description }}</td>
+                <td>{{ assignment.due_date }}</td>
+                <td>
+                    <!-- View Submissions -->
+                    <a href="{{ url_for('boundary.view_submissions',
+                    classroom_id=classroom_id,
+                    assignment_id=assignment._id) }}"
+   class="btn btn-info btn-sm">View Submissions</a>
+                    <!-- Delete Assignment -->
+                    <a href="{{ url_for('boundary.delete_assignment', classroom_id=classroom_id, assignment_id=assignment._id) }}" 
+                       class="btn btn-danger btn-sm">Delete</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="text-center">No assignments found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom_id) }}" class="btn btn-secondary mt-3">Back</a>
+</div>
+{% endblock %}

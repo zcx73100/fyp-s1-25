@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Materials{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Manage Class Materials</h2>
+
+    <!-- Search Bar -->
+    <form action="{{ url_for('boundary.search_materials', classroom_id=classroom_id) }}" method="GET" class="mb-4">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search materials" name="search_query" value="{{ request.args.get('search_query', '') }}">
+            <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+    </form>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for material in materials %}
+            <tr>
+                <td>{{ material.file_name }}</td>
+                <td>{{ material.title }}</td>
+                <td>{{ material.description }}</td>
+                <td>
+                    <a href="{{ url_for('boundary.view_material', material_id=material._id, classroom_id=classroom_id) }}" class="btn btn-primary">View</a>
+                    <form action="{{ url_for('boundary.delete_material', classroom_name=classroom_name, filename=material.file_name, classroom_id=classroom_id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="text-center">No materials uploaded yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Back Button -->
+    <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom_id) }}" class="btn btn-secondary mt-3">Back</a>
+</div>
+{% endblock %}

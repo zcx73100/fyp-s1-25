@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+  <h2 class="text-center mb-4">🎤 Choose Your Assistant Avatar + Voice</h2>
+
+  <form method="POST" action="{{ url_for('chatbot.assign_avatar') }}">
+    <div class="row justify-content-center mb-4">
+      {% for avatar in avatars %}
+      <div class="col-md-3 text-center mb-4">
+        <label>
+          <input type="radio" name="avatar_id" value="{{ avatar._id }}" required>
+          <img src="data:image/png;base64,{{ avatar.image_data }}" class="img-fluid rounded-circle" style="max-height: 150px;" />
+          <div class="mt-2">{{ avatar.avatarname or "Unnamed" }}</div>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group text-center mb-4">
+      <label for="tts_voice"><strong>Select TTS Voice:</strong></label>
+      <select name="tts_voice" id="tts_voice" class="form-control mx-auto" style="max-width: 300px;" required>
+        {% for voice in tts_options %}
+        <option value="{{ voice }}">{{ voice }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="text-center">
+      <button type="submit" class="btn btn-success px-4 py-2">✅ Save Assistant</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

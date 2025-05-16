@@ -1,0 +1,24 @@
+# Ignore Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+venv/
+env/
+
+# Git-related
+.git
+.gitignore
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Other
+*.log
+*.env
+.env.*
+node_modules/
+*.bak

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="result-container">
+    <h2 class="text-success mb-4">🎉 Quiz Submitted!</h2>
+    <p class="lead">You scored <strong>{{ score }}</strong> out of <strong>{{ total }}</strong>.</p>
+
+    <hr>
+
+    <h4 class="mt-4">📋 Question Review:</h4>
+    <ul class="result-list">
+        {% for q in results %}
+        <li class="result-item">
+            <strong>{{ q.text }}</strong><br>
+
+            {% if q.image %}
+            <div class="result-image">
+                <img src="data:image/png;base64,{{ q.image }}" alt="Image" />
+            </div>
+            {% endif %}
+
+            <span>✅ Correct Answer: {{ q.correct }}</span><br>
+            <span>Your Answer: 
+                {% if q.selected == q.correct %}
+                    <span class="text-success fw-bold">{{ q.selected }}</span>
+                {% else %}
+                    <span class="text-danger fw-bold">{{ q.selected }}</span>
+                {% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom_id) }}" class="btn btn-primary mt-4">⬅ Back to Classroom</a>
+</div>
+
+<style>
+.result-container {
+    max-width: 700px;
+    margin: 40px auto;
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    text-align: center;
+}
+
+.result-list {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 20px;
+    text-align: left;
+}
+
+.result-item {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #28a745;
+}
+
+.result-image img {
+    max-width: 100%;
+    height: auto;
+    margin: 10px 0;
+    border-radius: 8px;
+}
+</style>
+{% endblock %}

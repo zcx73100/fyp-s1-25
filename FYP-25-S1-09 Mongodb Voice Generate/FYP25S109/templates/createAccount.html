@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if session.get('role') == "Teacher" %}
+        Register a Student
+    {% elif is_admin %}
+        Create Account
+    {% else %}
+        Sign Up
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="text-center">
+                {% if session.get('role') == "Teacher" %}
+                    Register a Student
+                {% elif is_admin %}
+                    Create Account
+                {% else %}
+                    Become a Teacher
+                {% endif %}
+            </h2>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Sign Up Form -->
+            <form action="{{ url_for('boundary.sign_up') }}" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">First Name</label>
+                    <input type="text" id="name" name="name" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="surname" class="form-label">Last Name</label>
+                    <input type="text" id="surname" name="surname" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="date_of_birth" class="form-label">Date of Birth</label>
+                    <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password1" class="form-label">Password</label>
+                    <input type="password" id="password1" name="password1" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password2" class="form-label">Confirm Password</label>
+                    <input type="password" id="password2" name="password2" class="form-control" required>
+                </div>
+
+                <!-- Profile Picture Upload + Preview -->
+                <div class="mb-4 d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <label for="profile_pic" class="form-label">Upload Profile Picture (optional)</label>
+                        <input type="file" name="profile_pic" accept="image/*" class="form-control">
+                    </div>
+                    <div class="ms-3">
+                        <img id="preview" src="#" alt="Preview" style="display:none; width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 1px solid #ccc;">
+                    </div>
+                </div>
+
+                <!-- Dynamic Role Assignment -->
+                {% if session.get('role') == "Teacher" %}
+                    <input type="hidden" name="role" id="role" value="Student">
+                {% elif is_admin %}
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Select Role</label>
+                        <select id="role" name="role" class="form-select" required>
+                            <option value="Admin">Admin</option>
+                            <option value="Teacher">Teacher</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                {% else %}
+                    <input type="hidden" name="role" id="role" value="User">
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary w-100">Create Account</button>
+            </form>
+
+            <div class="text-center mt-3">
+                <p>Already have an account? <a href="{{ url_for('boundary.login') }}">Login here</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const profileInput = document.querySelector('input[name="profile_pic"]');
+        const preview = document.getElementById('preview');
+
+        if (profileInput && preview) {
+            profileInput.addEventListener('change', function (event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    preview.src = "#";
+                    preview.style.display = "none";
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock %}

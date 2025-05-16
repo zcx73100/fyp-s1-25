@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Edit Notification</h2>
+
+<div class="container mt-5">
+    <!-- ✅ Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('boundary.edit_notification', notification_id=notification._id|string) }}" method="post">
+        <div class="mb-3">
+            <label for="title" class="form-label">Notification Title:</label>
+            <input type="text" class="form-control" name="title" value="{{ notification.title }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Description:</label>
+            <textarea class="form-control" name="description" required>{{ notification.description }}</textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="priority" class="form-label">Priority (1 - Low, 2 - Medium, 3 - High):</label>
+            <select class="form-select" name="priority" required>
+                <option value="1" {% if notification.priority == 1 %}selected{% endif %}>1 - Low</option>
+                <option value="2" {% if notification.priority == 2 %}selected{% endif %}>2 - Medium</option>
+                <option value="3" {% if notification.priority == 3 %}selected{% endif %}>3 - High</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-success">Update Notification</button>
+    </form>
+</div>
+
+{% endblock %}

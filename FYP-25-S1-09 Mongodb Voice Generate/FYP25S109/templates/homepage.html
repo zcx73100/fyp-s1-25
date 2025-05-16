@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="section-title">Welcome to the Homepage</h2>
+
+<!-- ✅ General Video Section -->
+<div class="video-grid">
+    {% if videos %}
+        {% for video in videos %}
+            <div class="video-card">
+                <video controls>
+                    <source src="{{ url_for('boundary.serve_video', file_id=video.video_gridfs_id or video.file_id) }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <h5>{{ video.title or "Untitled" }}</h5>
+                <p>Uploaded By: {{ video.username }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-content">No videos available.</p>
+    {% endif %}
+</div>
+
+<!-- ✅ Admin Avatar Showcase -->
+<h3 class="section-subtitle">🎥 AI‑Powered Admin Avatars</h3>
+<div class="avatar-video-grid">
+    {% for item in avatar_showcase %}
+    <div class="avatar-video-card">
+        <!-- circular avatar thumbnail (base64) -->
+        <img
+            src="data:image/png;base64,{{ item.image_data }}"
+            alt="{{ item.avatarname }}"
+            class="avatar-showcase-img"
+            onmouseover="playAvatarVideo(this)"
+            onmouseout="pauseAvatarVideo(this)"
+        />
+        <div class="avatar-video-name">{{ item.avatarname }}</div>
+        
+        <!-- published video -->
+        {% if item.video_id %}
+            <video controls  class="avatar-showcase-video" id="avatar-video-{{ loop.index }}" >
+                <source src="{{ url_for('boundary.serve_published_video', file_id=item.video_id) }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        {% else %}
+            <p class="text-muted">No video published</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="text-center my-4">
+  <a href="/select_avatar" class="btn btn-primary btn-lg">
+    🎙️ Select Assistant Avatar + Voice
+  </a>
+</div>
+
+
+<!-- ✅ Classroom Section -->
+{% if session['username'] and session['role'] != 'User' %}
+<h3 class="section-subtitle">Classrooms</h3>
+<div class="classroom-container">
+    {% for classroom in classrooms %}
+    <div class="classroom-card">
+        <div class="classroom-header">
+            <h4>🏫 {{ classroom.classroom_name }}</h4>
+            <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom._id) }}" class="btn view-btn">⭐ View Classroom</a>
+        </div>
+
+        <p class="classroom-description">{{ classroom.description }}</p>
+        <hr class="separator">
+
+        <!-- Announcements -->
+        <div class="classroom-section">
+            <h5>📢 Announcements:</h5>
+            <ul>
+                {% if announcements.get(classroom._id) %}
+                    {% for a in announcements[classroom._id] %}
+                        <li><strong>{{ a.title }}</strong>: {{ a.content }}</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No announcements available.</li>
+                {% endif %}
+            </ul>
+        </div>
+        <hr class="separator">
+
+        <!-- Materials -->
+        <div class="classroom-section">
+            <h5>📂 Recent Materials:</h5>
+            <ul>
+                {% for m in materials.get(classroom._id, [])[:2] %}
+                    <li>{{ m.title }}</li>
+                {% else %}
+                    <li>No materials available.</li>
+                {% endfor %}
+            </ul>
+            <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom._id) }}" class="btn btn-success">📂 View More</a>
+        </div>
+        <hr class="separator">
+
+        <!-- Assignments -->
+        <div class="classroom-section">
+            <h5>📄 Recent Assignments:</h5>
+            <ul>
+                {% for a in assignments.get(classroom._id, [])[:2] %}
+                    <li>{{ a.title }}</li>
+                {% else %}
+                    <li>No assignments available.</li>
+                {% endfor %}
+            </ul>
+            <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom._id) }}" class="btn btn-secondary">📑 View More</a>
+        </div>
+        <hr class="separator">
+
+        <!-- Quizzes -->
+        <div class="classroom-section">
+            <h5>📝 Recent Quizzes:</h5>
+            <ul>
+                {% for q in quizzes.get(classroom._id|string, [])[:2] %}
+                    <li>
+                        <a href="{{ url_for('boundary.view_quiz', quiz_id=q._id) if session['role']=='Teacher' else url_for('boundary.attempt_quiz', quiz_id=q._id) }}">{{ q.title }}</a>
+                    </li>
+                {% else %}
+                    <li>No quizzes available.</li>
+                {% endfor %}
+            </ul>
+            <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom._id) }}" class="btn btn-primary">📚 View More</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ✅ Styles -->
+<style>
+    /* General Styles */
+    body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f5f7fa;
+        margin: 0;
+        padding: 0;
+    }
+
+    .section-title, .section-subtitle {
+        text-align: center;
+    }
+
+    .section-title {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+
+    .section-subtitle {
+        font-size: 18px;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    /* ✅ Avatar Styles */
+    .avatar-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        padding: 20px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .avatar-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .avatar-card img {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        object-position: center top;
+        border-radius: 50%; /* Makes it circular */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .avatar-card h5 {
+        font-size: 14px;
+        color: #555;
+        margin-top: 10px;
+    }
+
+
+    /* ✅ Video & Avatar Grid Styles */
+    .video-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));  /* Adjust grid for responsiveness */
+        gap: 20px;
+        padding: 20px;
+        justify-content: center;
+    }
+
+    .video-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease-in-out;
+        text-align: center;
+    }
+
+    .video-card:hover {
+        transform: scale(1.05);
+    }
+
+    .video-card video {
+        width: 100%;
+        height: auto;
+        max-width: 640px;  /* Ensures the video doesn't stretch beyond a certain width */
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .video-card h5 {
+        font-size: 18px;
+        margin-top: 10px;
+        color: #333;
+    }
+
+    .video-card p {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .no-content {
+        text-align: center;
+        font-size: 16px;
+        color: gray;
+        margin: 20px;
+    }
+
+
+    /* ✅ Classroom Styles */
+    .classroom-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));  /* Responsive grid */
+        gap: 20px;
+        padding: 20px;
+        justify-content: center;
+    }
+
+    .classroom-card {
+        background: linear-gradient(to bottom, #ffffff, #f1f1f1);
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        text-align: left;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .classroom-card:hover {
+        transform: translateY(-5px); /* Slight lift on hover */
+    }
+
+    .classroom-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .classroom-header h4 {
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .classroom-description {
+        font-size: 14px;
+        color: #666;
+        margin-top: 10px;
+        line-height: 1.5;
+    }
+
+    .classroom-section {
+        margin-top: 15px;
+    }
+
+    .classroom-section h5 {
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .classroom-section ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .classroom-section ul li {
+        font-size: 14px;
+        color: #555;
+        padding: 5px 0;
+        line-height: 1.4;
+    }
+
+    .classroom-section ul li a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .classroom-section ul li a:hover {
+        text-decoration: underline;
+    }
+
+    .separator {
+        height: 1px;
+        background: #ddd;
+        margin: 15px 0;
+    }
+
+    /* ✅ Announcement Box */
+    .announcement-box {
+        background: #ffefc3;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: #805300;
+        font-size: 14px;
+    }
+
+    .announcement-box h5 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    /* ✅ Buttons */
+    .btn {
+        display: inline-block;
+        padding: 8px 12px;
+        text-align: center;
+        border-radius: 5px;
+        font-size: 14px;
+        text-decoration: none;
+        transition: background 0.3s ease-in-out;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #545b62;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    .view-btn {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .view-btn:hover {
+        background-color: #0056b3;
+    }
+
+    .separator {
+        height: 1px;
+        background: #ccc;
+        margin: 10px 0;
+    }
+    /* Container for the trackbar */
+    .trackbar {
+    display: flex;
+    overflow-x: auto;
+    padding: 10px;
+    background: #f5f5f5;
+    gap: 16px;
+    border-radius: 12px;
+    scrollbar-width: none; /* Firefox */
+    }
+
+    .trackbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+    }
+
+    /* Avatar icons */
+    .avatar {
+    flex: 0 0 auto;
+    width: 120px;
+    height: 120px;
+    border-radius: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    object-fit: cover;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .avatar:hover {
+    transform: scale(1.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+    .avatar-card img {
+        width: 240px;
+        height: 240px;
+        object-fit: cover;
+        object-position: center top;
+        border-radius: 100%;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease-in-out; /* Add transition for smooth scaling */
+    }
+
+    .avatar-card img:hover {
+        transform: scale(1.1); /* Zoom in slightly on hover */
+    }
+
+    .avatar-video-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 30px;
+        padding: 20px;
+        margin-bottom: 40px;
+    }
+    
+    .avatar-video-card {
+        background: white;
+        padding: 20px;
+        border-radius: 18px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        text-align: center;
+        transition: transform 0.3s ease;
+        position: relative;
+    }
+    
+    .avatar-video-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    /* Updated Avatar Showcase Styles */
+    .avatar-showcase-img {
+        width: 180px;  /* Increased from 140px */
+        height: 180px; /* Increased from 140px */
+        object-fit: cover;
+        object-position: center top; /* This ensures faces are centered and visible */
+        border-radius: 50%;
+        margin-bottom: 10px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        transition: opacity 0.3s ease;
+    }
+
+    .avatar-showcase-video {
+        width: 180px;  /* Increased from 140px */         
+        height: 180px; /* Increased from 140px */
+        object-fit: cover;
+        object-position: center top; /* Focus on faces in videos too */
+        border-radius: 50%;      
+        display: block;         
+        margin: 0 auto 10px;     
+        box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    /* Adjust card padding to accommodate larger avatars */
+    .avatar-video-card {
+        padding: 25px 20px; /* Increased top padding */
+    }
+    
+    .avatar-video-card:hover .avatar-showcase-video {
+        opacity: 1;
+    }
+    
+    .avatar-video-card:hover .avatar-showcase-img {
+        opacity: 0;
+    }
+</style>    
+
+<script>
+    function playAvatarVideo(imgElement) {
+        // Find the video element that's a sibling of the image
+        const videoElement = imgElement.nextElementSibling.nextElementSibling;
+        if (videoElement && videoElement.tagName === 'VIDEO') {
+            videoElement.currentTime = 0; // Rewind to start
+            videoElement.play().catch(e => console.log("Video play failed:", e));
+        }
+    }
+    
+    function pauseAvatarVideo(imgElement) {
+        // Find the video element that's a sibling of the image
+        const videoElement = imgElement.nextElementSibling.nextElementSibling;
+        if (videoElement && videoElement.tagName === 'VIDEO') {
+            videoElement.pause();
+        }
+    }
+</script>
+
+{% endblock %}

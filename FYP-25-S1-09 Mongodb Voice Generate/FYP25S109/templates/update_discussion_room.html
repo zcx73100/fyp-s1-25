@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Update Discussion Room</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <form action="{{ url_for('boundary.update_discussion_room', discussion_room_id=discussion_room._id) }}" method="POST">
+                <!-- Hidden field for classroom_id -->
+                <input type="hidden" name="classroom_id" value="{{ discussion_room.classroom_id }}">
+                <input type="hidden" name="discussion_room_id" value="{{ discussion_room._id }}">
+                
+                <div class="form-group">
+                    <label for="discussion_room_name">Room Topic</label>
+                    <input type="text" id="discussion_room_name" name="discussion_room_name" class="form-control" value="{{ discussion_room.discussion_room_name }}" required>
+                </div>
+                <div class="form-group mt-2">
+                    <label for="discussion_room_description">Room Description</label>
+                    <input type="text" id="discussion_room_description" name="discussion_room_description" class="form-control" value="{{ discussion_room.discussion_room_description }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
+                <a href="{{ url_for('boundary.view_discussion_room_list', classroom_id=discussion_room.classroom_id) }}" class="btn btn-secondary mt-3">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

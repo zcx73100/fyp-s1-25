@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Search Results for "{{query}}"</h2>
+
+<!-- Matching Classrooms Section -->
+<h3>Matching Classrooms</h3>
+{% if classrooms %}
+<table border="1">
+    <tr>
+        <th>Classroom Name</th>
+        <th>Instructor</th>
+        <th>Actions</th>
+    </tr>
+    {% for classroom in classrooms %}
+    <tr>
+        <td>{{ classroom.classroom_name }}</td>
+        <td>{{ classroom.teacher }}</td>
+        <td>
+            <!-- View Details button -->
+            <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom._id) }}">
+                <button>View Details</button>
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No matching classrooms found.</p>
+{% endif %}
+
+<!-- Back button -->
+<div class="back-button">
+    <a href="{{ url_for('boundary.manage_classrooms') }}">
+        <button>Back to Homepage</button>
+    </a>
+</div>
+
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f9f9f9;
+        padding: 20px;
+    }
+
+    h2, h3 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    table {
+        width: 90%;
+        margin: 0 auto 30px auto;
+        border-collapse: collapse;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        background-color: #fff;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        padding: 14px 20px;
+        text-align: left;
+    }
+
+    th {
+        background-color: #007bff;
+        color: white;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    tr:hover {
+        background-color: #e9f3ff;
+    }
+
+    button {
+        padding: 8px 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    a button {
+        margin: 5px;
+    }
+
+    p {
+        text-align: center;
+        color: #666;
+        font-size: 16px;
+    }
+
+    a {
+        text-decoration: none;
+    }
+
+    .back-button {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+</style>
+
+{% endblock %}

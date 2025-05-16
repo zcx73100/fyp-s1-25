@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Manage Avatars</h2>
+
+    <!-- Display Avatars -->
+    <h3>Your Avatars</h3>
+    {% if avatars %}
+    <ul class="avatar-grid">
+        {% for avatar in avatars %}
+            <li class="avatar-card">
+                <img src="{{ url_for('static', filename=avatar.file_path) }}" alt="Avatar">
+                <p>Uploaded on: {{ avatar.upload_date }}</p>
+                <form action="{{ url_for('boundary.delete_avatar', avatar_id=avatar._id) }}" method="POST" class="delete-form">
+                    <button type="button" class="delete-btn" onclick="confirmDelete(this)">Delete</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        <p>No avatars found.</p>
+    {% endif %}
+
+    <!-- Link to Add Avatar -->
+    <a href="{{ url_for('boundary.admin_create_avatar') }}" class="btn btn-primary">Add New Avatar</a>
+
+    <!-- JavaScript for Confirmation -->
+    <script>
+        function confirmDelete(button) {
+            if (confirm("Are you sure you want to delete this avatar?")) {
+                button.closest("form").submit();  // Submit form if confirmed
+            }
+        }
+    </script>
+
+    <!-- Embedded CSS -->
+    <style>
+        /* Grid Layout for Avatars */
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            padding: 16px;
+            list-style-type: none;
+        }
+
+        /* Avatar Card Styles */
+        .avatar-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            text-align: center;
+        }
+
+        /* Avatar Image Styling */
+        .avatar-card img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Delete Button Styling */
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2 style="text-align:center">Classroom: {{ classroom.classroom_name }}</h2>
+    <p style="text-align:center">{{ classroom.description }}</p>
+
+    <div class="classroom-section">
+        <h3>📢 Announcements</h3>
+        {% if session['role'] == 'Teacher' %}
+            <a href="{{ url_for('boundary.add_announcement', classroom_name=classroom.classroom_name, classroom_id = classroom._id) }}" class="btn btn-warning">📢 Add Announcement</a>
+        {% endif %}
+        <ul>
+            {% if announcements %}
+                {% for announcement in announcements %}
+                    <li>
+                        <strong>{{ announcement.title }}</strong>: {{ announcement.content }}
+                        <br>
+                        <span style="font-size: 12px; color: #aaa;">📅 {{ announcement.created_at }}</span>
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li>No announcements available.</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="classroom-section">
+        <h3>💬 Forum</h3>
+        <a href="{{ url_for('boundary.access_forum', classroom_id=classroom._id) }}" class="btn btn-primary">View Forum</a>
+    </div>
+
+    <div class="classroom-section">
+        <h3>📂 Materials</h3>
+        {% if session['role'] == 'Teacher' %}
+            <a href="{{ url_for('boundary.upload_material_page', classroom_id=classroom._id) }}" class="btn btn-primary">Upload Material</a>
+            <a href="{{ url_for('boundary.manage_materials', classroom_id=classroom._id) }}" class="btn btn-secondary">Manage Materials</a>
+        {% endif %}
+        <ul>
+            {% if materials %}
+                {% for material in materials %}
+                    <li>
+                        <strong>{{ material.title }}</strong>: {{ material.description }}
+                        <br>
+                        <a href="{{ url_for('boundary.view_material', classroom_id=classroom._id, material_id = material._id) }}" class="file-button">📄 View</a>
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li>No materials available.</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="classroom-section">
+        <h3>📄 Assignments</h3>
+        {% if session['role'] == 'Teacher' %}
+            <a href="{{ url_for('boundary.upload_assignment', classroom_id=classroom._id) }}" class="btn btn-primary">Upload Assignment</a>
+            <a href="{{ url_for('boundary.manage_assignments', classroom_id=classroom._id) }}" class="btn btn-secondary">Manage Assignments</a>
+        {% endif %}
+        <ul>
+            {% if assignments %}
+                {% for assignment in assignments %}
+                    <li>
+                        <strong>{{ assignment.title }}</strong>: {{ assignment.description }}
+                        <br>
+                        <span>📅 Due: {{ assignment.due_date | default("Not specified") }}</span>
+                        <br>
+                        <a href="{{ url_for('boundary.view_assignment', assignment_id=assignment._id, filename=assignment.file_name) }}" class="file-button">📄 View</a>
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li>No assignments available.</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="classroom-section">
+        <h3>📝 Quizzes</h3>
+        {% if session['role'] == 'Teacher' %}
+            <a href="{{ url_for('boundary.upload_quiz', classroom_id=classroom._id) }}" class="btn btn-primary">Create Quiz</a>
+            <a href="{{ url_for('boundary.manage_quizzes', classroom_id=classroom._id) }}" class="btn btn-secondary">Manage Quizzes</a>
+        {% endif %}
+        <ul>
+            {% if quizzes %}
+                {% for quiz in quizzes %}
+                    <li>
+                        <strong>{{ quiz.title }}
+                        <br>
+                        {% if session['role'] == 'Teacher' %}
+                            <a href="{{ url_for('boundary.view_quiz', quiz_id=quiz._id) }}" class="file-button">📄 View</a>
+                        {% endif %}
+                        {% if session['role'] == 'Student' %}
+                            <a href="{{ url_for('boundary.attempt_quiz', quiz_id=quiz._id) }}" class="btn btn-success">Attempt Quiz</a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li>No quizzes available.</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="classroom-section">
+        <h3>Students in this Classroom</h3>
+        <form action="{{ url_for('boundary.manage_students', classroom_id=classroom._id) }}" method="POST">
+            <input type="hidden" name="classroom_id" value="{{ classroom._id }}">
+            <button type="submit" class="btn btn-primary">See Students in this Classroom</button>
+        </form>
+    </div>  
+
+    <style>
+        .file-button {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s ease-in-out;
+        }
+
+        .file-button:hover {
+            background: #0056b3;
+        }
+
+        .classroom-section {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .classroom-section h3 {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        .classroom-section ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .classroom-section ul li {
+            padding: 5px 0;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+    </style>
+{% endblock %}

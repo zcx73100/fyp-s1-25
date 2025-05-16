@@ -1,0 +1,49 @@
+<!--Read-only version of user_info details-->
+{% extends "base.html" %}
+
+{% block title %}Account Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>User Details</h2>
+
+    <!-- ✅ Display Profile Picture (if available) -->
+    <div class="text-center mb-3">
+        {% if user_info.profile_pic %}
+            <img src="data:image/png;base64,{{ user_info.profile_pic }}" alt="Profile Picture" class="img-thumbnail rounded-circle" width="150">
+        {% else %}
+            <p><em>No profile picture uploaded.</em></p>
+        {% endif %}
+    </div>
+    
+    <table class="table table-bordered">
+        <tr>
+            <th>Username</th>
+            <td>{{ user_info.username }}</td>
+        </tr>
+        <tr>
+            <th>First Name</th>
+            <td>{{ user_info.name if user_info.name else 'N/A' }}</td>
+        </tr>
+        <tr>
+            <th>Last Name</th>
+            <td>{{ user_info.surname if user_info.surname else 'N/A' }}</td>
+        </tr>
+        <tr>
+            <th>Date of Birth</th>
+            <td>{{ user_info.date_of_birth if user_info.date_of_birth else 'N/A' }}</td>
+        </tr>
+        <tr>
+            <th>Email</th>
+            <td>{{ user_info.email if user_info.email }}</td>
+        </tr>
+        <tr>
+            <th>Role</th>
+            <td><strong class="text-primary">{{ user_info.role }}</strong></td>
+        </tr>
+    </table>
+    <button type="return" class="btn btn-primary" onclick="window.history.back()">Back</button>
+
+
+</div>
+{% endblock %}
