@@ -345,6 +345,72 @@ class GenerateVideoEntity:
             print(f"❌ Error during video generation: {e}")
             return None
 
+    def generate_voice(self, lang, gender):
+        try:
+            if not self.text.strip():
+                raise ValueError("Text input is empty.")
+    
+            # Get voice config...
+            # (same voice_config logic as before)
+    
+            lang_config = voice_config.get(lang)
+            gender_config = lang_config.get(gender)
+    
+            mp3_buffer = BytesIO()
+            tts = gTTS(
+                text=self.text,
+                lang=lang,
+                tld=gender_config["tld"],
+                slow=gender_config["slow"]
+            )
+            tts.write_to_fp(mp3_buffer)
+            mp3_buffer.seek(0)
+    
+            audio_id = get_fs().put(
+                mp3_buffer,
+                filename=f"voice_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.mp3",
+                content_type="audio/mpeg"
+            )
+    
+            # Save voice metadata
+            voice_data = {
+                "audio_id": audio_id,
+                "text": self.text,
+                "lang": lang,
+                "gender": gender,
+                "created_at": datetime.now(),
+                "status": "generated",
+                "username": session.get("username"),
+                "source": "chatbot"
+            }
+            mongo.db.voice_records.insert_one(voice_data)
+    
+            # Generate video if avatar_id is provided
+            avatar_id = getattr(self, "avatar_id", None)
+            if avatar_id:
+                video_title = f"Chatbot Voice - {datetime.now().strftime('%Y%m%d%H%M%S')}"
+                video_id = generate_video(avatar_id=avatar_id, audio_id=audio_id, video_title=video_title)
+    
+                if video_id:
+                    mongo.db.generated_videos.insert_one({
+                        "username": session.get("username"),
+                        "audio_id": audio_id,
+                        "avatar_id": avatar_id,
+                        "video_id": video_id,
+                        "title": video_title,
+                        "description": self.text[:100],
+                        "is_published": False,
+                        "created_at": datetime.utcnow(),
+                        "source": "chatbot"
+                    })
+    
+            return audio_id
+    
+        except Exception as e:
+            print(f"❌ Error generating voice: {e}")
+            return None
+
+
 
     @staticmethod    
     def get_videos(username):
