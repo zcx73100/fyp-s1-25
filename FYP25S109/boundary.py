@@ -2087,15 +2087,18 @@ class TeacherManageStudentsBoundary:
 
 # Manage Material
 class TeacherManageMaterialBoundary:
+
     @boundary.route('/upload_material', methods=['POST'])
     def upload_material():
         classroom_id = request.form.get('classroom_id')
         title = request.form.get('title')
         description = request.form.get('description')
         file = request.files.get('file')
+        video_ids = request.form.getlist('video_ids')  # ✅ Accept multiple optional videos
 
-        # Call the Controller to process the material upload
-        result = UploadMaterialController.upload_material(title, file, session.get('username'), classroom_id, description)
+        result = UploadMaterialController.upload_material(
+            title, file, session.get('username'), classroom_id, description, video_ids
+        )
 
         if result["success"]:
             flash(result["message"], 'success')
@@ -2106,68 +2109,70 @@ class TeacherManageMaterialBoundary:
 
     @boundary.route('/upload_material/<classroom_id>', methods=['GET'])
     def upload_material_page(classroom_id):
-        return render_template("uploadMaterial.html", classroom_id=classroom_id)
-    
+        # Fetch the teacher's videos to optionally attach
+        username = session.get("username")
+        videos = list(mongo.db.generated_videos.find({"username": username}).sort("created_at", -1))
+        return render_template("uploadMaterial.html", classroom_id=classroom_id, videos=videos)
+
     @boundary.route('/manage_materials/<classroom_id>', methods=['GET'])
     def manage_materials(classroom_id):
-        # Fetch the materials from the database for the specified classroom
         materials = mongo.db.materials.find({"classroom_id": ObjectId(classroom_id)})
         return render_template("manageMaterials.html", materials=materials, classroom_id=classroom_id)
 
     @boundary.route('/delete_material/<classroom_id>/<filename>', methods=['POST'])
     def delete_material(classroom_id, filename):
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        
-        # Remove entry from MongoDB
         mongo.db.materials.delete_one({"classroom_id": ObjectId(classroom_id), "file_name": filename})
-        
         flash('Material deleted successfully!', 'success')
         return redirect(url_for('boundary.manage_materials', classroom_id=classroom_id))
 
     @boundary.route('/view_material/<material_id>/<classroom_id>', methods=['GET'])
     def view_material(material_id, classroom_id):
-            material_controller = ViewMaterialController()
-            material, file_data = material_controller.get_material(material_id)
+        material_controller = ViewMaterialController()
+        material, file_data = material_controller.get_material(material_id)
 
-            if not material:
-                flash('Material not found!', 'danger')
-                return redirect(url_for('boundary.manage_materials', classroom_id=classroom_id))
+        if not material:
+            flash('Material not found!', 'danger')
+            return redirect(url_for('boundary.manage_materials', classroom_id=classroom_id))
 
-            file_content = file_data.read()
-            file_extension = material['file_name'].split('.')[-1].lower()
+        file_content = file_data.read()
+        file_extension = material['file_name'].split('.')[-1].lower()
+        file_base64 = base64.b64encode(file_content).decode('utf-8')
 
-            # Encode file content as base64 for embedding
-            file_base64 = base64.b64encode(file_content).decode('utf-8')
+        # ✅ Fetch attached videos if any
+        video_previews = []
+        if 'video_ids' in material:
+            for vid in material['video_ids']:
+                try:
+                    video = mongo.db.generated_videos.find_one({'video_id': vid})
+                    if video:
+                        video_previews.append({
+                            "video_id": str(video['video_id']),
+                            "title": video.get("title", "Untitled Video")
+                        })
+                except:
+                    pass
 
-            return render_template("viewMaterial.html",
-                                material_id=material['_id'],
-                                filename=material['file_name'],
-                                classroom_id=classroom_id,
-                                file_base64=file_base64,
-                                file_extension=file_extension,
-                                text_content=file_content.decode('utf-8') if file_extension in ['txt', 'md'] else None)
-    
+        return render_template("viewMaterial.html",
+                               material_id=material['_id'],
+                               filename=material['file_name'],
+                               classroom_id=classroom_id,
+                               file_base64=file_base64,
+                               file_extension=file_extension,
+                               text_content=file_content.decode('utf-8') if file_extension in ['txt', 'md'] else None,
+                               video_previews=video_previews)  # ✅
+
     @boundary.route('/search_materials/<classroom_id>', methods=['GET'])
     def search_materials(classroom_id):
-        search_query = request.args.get('search_query', '').strip()
-
-        # If a search query is provided, filter the materials by title or description
-        if search_query:
-            materials = mongo.db.materials.find({
-                "classroom_id": ObjectId(classroom_id),
-                "$or": [
-                    {"title": {"$regex": search_query, "$options": "i"}},  # Case-insensitive search for title
-                    {"description": {"$regex": search_query, "$options": "i"}}  # Case-insensitive search for description
-                ]
-            })
-        else:
-            # If no search query, show all materials
-            materials = mongo.db.materials.find({"classroom_id": ObjectId(classroom_id)})
-
+        query = request.args.get('search_query', '').strip()
+        q = {"classroom_id": ObjectId(classroom_id)}
+        if query:
+            q["$or"] = [
+                {"title": {"$regex": query, "$options": "i"}},
+                {"description": {"$regex": query, "$options": "i"}}
+            ]
+        materials = mongo.db.materials.find(q)
         return render_template('manageMaterials.html', materials=materials, classroom_id=classroom_id)
-    
+
     @staticmethod
     @boundary.route('/teacher/download_material/<material_id>')
     def download_material(material_id):
@@ -2177,10 +2182,8 @@ class TeacherManageMaterialBoundary:
             return redirect(url_for("boundary.home"))
 
         try:
-            fs = get_fs()  # ✅ Safely get GridFS instance
-
-            file_data = fs.get(material["file_id"])  # ✅ Reuse this instance
-
+            fs = get_fs()
+            file_data = fs.get(material["file_id"])
             return send_file(
                 io.BytesIO(file_data.read()),
                 mimetype=mimetypes.guess_type(material["file_name"])[0] or "application/octet-stream",
@@ -2190,6 +2193,7 @@ class TeacherManageMaterialBoundary:
         except Exception as e:
             flash(f"Error downloading file: {str(e)}", "danger")
             return redirect(url_for("boundary.home"))
+
         
 # View Quiz        
 class TeacherViewQuizBoundary:

@@ -110,10 +110,9 @@ class SearchTutorialController:
             "title": v.get("title", "Untitled"),
             "description": v.get("description", ""),
             "video_name": v.get("video_name", ""),
-            "username": v.get("username", "Unknown"),
-            "file_id": str(v.get("file_id", ""))  # ✅ ensure it's a string
+            "username": v.get("username", "Unknown")
         } for v in raw_results]
-
+ # Call entity method
     
 class SearchAvatarController:
     @staticmethod
@@ -191,10 +190,10 @@ class ViewAssignmentController:
 
 class UploadMaterialController:
     @staticmethod
-    def upload_material(title, file, uploader, classroom_id, description):
-        # Create the Material entity and delegate the actual work to the entity's method
-        material = Material(title, file, uploader, description,classroom_id=classroom_id)
+    def upload_material(title, file, uploader, classroom_id, description, video_ids=None):
+        material = Material(title, file, uploader, description, classroom_id, video_ids=video_ids)
         return material.save_material()
+
     
 class ViewMaterialController:
     @staticmethod

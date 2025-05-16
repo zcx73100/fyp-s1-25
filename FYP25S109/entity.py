@@ -675,16 +675,16 @@ class Classroom:
 class Material:
     ALLOWED_MATERIAL_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'zip'}
 
-    def __init__(self, title, file, username, description,classroom_id):
+    def __init__(self, title, file, username, description, classroom_id, video_ids=None):
         self.title = title
         self.file = file
         self.username = username
         self.description = description
-        self.classroom_id = ObjectId(classroom_id)  # Ensure classroom_id is an ObjectId
+        self.classroom_id = ObjectId(classroom_id)
+        self.video_ids = [ObjectId(v) for v in video_ids] if video_ids else []
 
     def save_material(self):
         try:
-            # Validate file type
             if not self.file or '.' not in self.file.filename:
                 raise ValueError("Invalid file or missing filename.")
 
@@ -692,38 +692,40 @@ class Material:
             if file_extension not in self.ALLOWED_MATERIAL_EXTENSIONS:
                 raise ValueError("Invalid material format.")
 
-            # Secure the file name
             filename = secure_filename(self.file.filename)
 
-            # Save file to GridFS
             file_id = get_fs().put(self.file, filename=filename, content_type=self.file.content_type)
 
-            # Store material metadata in MongoDB
-            mongo.db.materials.insert_one({
+            material_doc = {
                 'title': self.title,
                 'file_id': file_id,
                 'file_name': filename,
                 'username': self.username,
                 'upload_date': datetime.now(),
                 'description': self.description,
-                'classroom_id': self.classroom_id  # Ensure classroom_id is saved
-            })
+                'classroom_id': self.classroom_id,
+            }
+
+            # ✅ Include video references if available
+            if self.video_ids:
+                material_doc['video_ids'] = self.video_ids
+
+            mongo.db.materials.insert_one(material_doc)
 
             return {"success": True, "message": "Material uploaded to database successfully."}
 
         except Exception as e:
             logging.error(f"Error saving material: {str(e)}")
             return {"success": False, "message": str(e)}
+
     @staticmethod
     def get_material_by_id(material_id):
-        # Fetch material metadata from MongoDB
         material = mongo.db.materials.find_one({"_id": ObjectId(material_id)})
-
         if not material:
             return None
-            
         file_data = get_fs().get(material['file_id'])
         return material, file_data
+
 
 class Assignment:
     def __init__(self, title=None, file=None, classroom_id=None, description=None,
