@@ -1,22 +1,21 @@
-
 {% extends "base.html" %}
 
 {% block title %}My Videos{% endblock %}
 
 {% block content %}
-<!-- Flash Messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
-
 <div class="container mt-4">
     <h1 class="mb-4">My Saved Videos</h1>
 
-    <!-- 🔍 Search Form -->
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Search Form -->
     <form method="GET" action="{{ url_for('boundary.my_videos') }}" class="mb-4">
         <div class="input-group">
             <input type="text" name="search" class="form-control" placeholder="Search videos by title..." value="{{ request.args.get('search', '') }}">
@@ -25,15 +24,15 @@
     </form>
 
     {% if drafts %}
-    <h2>Draft Videos (Will be deleted in 24 hours)</h2>
+    <h2>Draft Videos (Auto-deletes in 24h)</h2>
     <div class="row">
         {% for video in drafts %}
         <div class="col-md-4 mb-4">
-            <div class="card h-100 shadow-sm border-warning">
+            <div class="card h-100 border-warning shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">{{ video.title or "Untitled Draft" }}</h5>
-                    <small class="text-muted">Drafted on {{ video.created_at.strftime('%B %d, %Y') }}</small>
-                    <p class="mt-2">Status: <span class="badge bg-warning text-dark">Draft</span></p>
+                    <p class="card-text text-muted">Created: {{ video.created_at.strftime('%B %d, %Y') }}</p>
+                    <span class="badge bg-warning text-dark">Draft</span>
                 </div>
             </div>
         </div>
@@ -59,7 +58,6 @@
                         </button>
                     </div>
 
-                    <!-- Edit Title Form (Initially Hidden) -->
                     <form method="POST" action="{{ url_for('boundary.update_video_title', video_id=video.video_id) }}"
                           class="edit-title-form" id="edit-form-{{ video.video_id }}" style="display: none;">
                         <div class="input-group mb-2">
@@ -76,15 +74,17 @@
                     </form>
 
                     <p class="card-text">{{ video.description }}</p>
-                    <small class="text-muted d-block mb-2">Uploaded on {{ video.created_at.strftime('%B %d, %Y') }}</small>
+                    <small class="text-muted d-block mb-2">Uploaded: {{ video.created_at.strftime('%B %d, %Y') }}</small>
 
                     {% if role == 'Admin' %}
                         {% if not video.is_published %}
                             <form method="POST" action="{{ url_for('boundary.publish_video', video_id=video._id) }}">
-                                <button type="submit" class="btn btn-success btn-sm">Publish</button>
+                                <button type="submit" class="btn btn-sm btn-success mb-1">Publish</button>
                             </form>
                         {% else %}
-                            <span class="badge bg-success">Published</span>
+                            <form method="POST" action="{{ url_for('boundary.unpublish_video', video_id=video._id) }}">
+                                <button type="submit" class="btn btn-sm btn-warning mb-1">Unpublish</button>
+                            </form>
                         {% endif %}
                     {% endif %}
 
@@ -99,13 +99,12 @@
     </div>
     {% else %}
         <div class="alert alert-info" role="alert">
-            You have not saved any videos yet.
+            You haven’t saved any videos yet.
         </div>
     {% endif %}
 </div>
 
 <script>
-    // Toggle edit title form
     document.querySelectorAll('.edit-title-btn').forEach(button => {
         button.addEventListener('click', function () {
             const videoId = this.getAttribute('data-video-id');
@@ -115,13 +114,12 @@
         });
     });
 
-    // Cancel edit
     document.querySelectorAll('.cancel-edit-btn').forEach(button => {
         button.addEventListener('click', function () {
             const videoId = this.getAttribute('data-video-id');
             document.getElementById(`edit-form-${videoId}`).style.display = 'none';
             document.getElementById(`title-${videoId}`).style.display = 'block';
-            document.querySelector(`.edit-title-btn[data-video-id="${videoId}"]`).style.display = 'block';
+            document.querySelector(`.edit-title-btn[data-video-id="${videoId}"]`).style.display = 'inline-block';
         });
     });
 </script>
