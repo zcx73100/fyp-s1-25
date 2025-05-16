@@ -1,54 +1,86 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="material-view-container">
-        <h2>Viewing Material: {{ filename }}</h2>
-        <div class="material-frame">
-            {% if file_extension == "pdf" %}
-                <iframe src="data:application/pdf;base64,{{ file_base64 }}" 
-                        width="100%" height="600px" frameborder="0"></iframe>
+<div class="material-view-container">
+    <h2>Viewing Material: {{ filename }}</h2>
 
-            {% elif file_extension in ["doc", "docx", "ppt", "pptx"] %}
-                <p>DOCX files cannot be previewed. Please download the file.</p>
-                 <a href="{{ url_for('boundary.download_material', material_id=material_id) }}" 
-                                   class="btn btn-primary" download>⬇️ Download File</a>
-            {% elif file_extension in ["txt", "md"] %}
-                <div class="text-content">
-                    <pre>{{ text_content }}</pre>
-                </div>
+    <!-- Material Preview -->
+    <div class="material-frame">
+        {% if file_extension == "pdf" %}
+            <iframe src="data:application/pdf;base64,{{ file_base64 }}" 
+                    width="100%" height="600px" frameborder="0"></iframe>
 
-            {% else %}
-                <p>Unsupported file format.</p>
-            {% endif %}
-        </div>
+        {% elif file_extension in ["doc", "docx", "ppt", "pptx"] %}
+            <p class="text-muted">This file type cannot be previewed. Please download the file below:</p>
+            <a href="{{ url_for('boundary.download_material', material_id=material_id) }}" 
+               class="btn btn-primary" download>⬇️ Download File</a>
 
-        <div class="buttons">
-            <button class="btn btn-secondary" onclick="window.history.back();">Return to Classroom</button>
-        </div>
+        {% elif file_extension in ["txt", "md"] %}
+            <div class="text-content">
+                <pre>{{ text_content }}</pre>
+            </div>
+
+        {% else %}
+            <p class="text-danger">⚠️ Unsupported file format for preview.</p>
+        {% endif %}
     </div>
 
-    <style>
-        .material-view-container {
-            text-align: center;
-            padding: 20px;
-        }
+    <!-- Attached Videos -->
+    {% if attached_videos %}
+    <div class="mt-5">
+        <h4>🎬 Attached Videos</h4>
+        <div class="row">
+            {% for video in attached_videos %}
+                <div class="col-md-6 mt-3 video-preview">
+                    <video width="100%" controls>
+                        <source src="{{ url_for('boundary.serve_generated_video', video_id=video.id) }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <p class="mt-2 text-center">{{ video.name or "Untitled Video" }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
-        .material-frame {
-            margin: 20px auto;
-            width: 80%;
-            height: 600px;
-            border: 1px solid #ddd;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            overflow: auto;
-        }
+    <!-- Navigation -->
+    <div class="buttons mt-4">
+        <button class="btn btn-secondary" onclick="window.history.back();">← Return to Classroom</button>
+    </div>
+</div>
 
-        .text-content {
-            text-align: left;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            white-space: pre-wrap;
-        }
-    </style>
+<!-- Styles -->
+<style>
+    .material-view-container {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .material-frame {
+        margin: 20px auto;
+        width: 80%;
+        height: 600px;
+        border: 1px solid #ddd;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: auto;
+    }
+
+    .text-content {
+        text-align: left;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        white-space: pre-wrap;
+    }
+
+    .video-preview video {
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .buttons {
+        margin-top: 30px;
+    }
+</style>
 {% endblock %}
