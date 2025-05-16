@@ -60,28 +60,48 @@
               </a>
             </td>
             <td>
-              <form action="{{ url_for('boundary.grade_assignment',
-                                       classroom_id=classroom_id,
-                                       assignment_id=assignment._id,
-                                       student_username=submission.student,
-                                       submission_id=submission._id) }}"
-                    method="POST" class="d-flex gap-2">
-                <input type="number" name="grade" min="0" max="100"
-                       value="{{ submission.grade if submission.grade is not none else '' }}"
-                       required class="form-control form-control-sm" style="width: 80px;">
-                <button type="submit" class="btn btn-success btn-sm">✔</button>
+              <form class="grade-form" 
+                    action="{{ url_for('boundary.grade_assignment',
+                                     classroom_id=classroom_id,
+                                     assignment_id=assignment._id,
+                                     student_username=submission.student,
+                                     submission_id=submission._id) }}"
+                    method="POST">
+                <div class="input-group">
+                  <input type="number" name="grade" min="0" max="100"
+                         value="{{ submission.grade if submission.grade is not none else '' }}"
+                         class="form-control form-control-sm grade-input" 
+                         style="width: 70px;">
+                  <button type="submit" class="btn btn-sm {{ 'btn-success' if submission.grade is not none else 'btn-primary' }}">
+                    {{ 'Update' if submission.grade is not none else 'Save' }}
+                  </button>
+                </div>
               </form>
             </td>
             <td>
-              {% if submission.feedback %}
-                {{ submission.feedback }}
-              {% else %}
-                <form action="{{ url_for('boundary.add_feedback', submission_id=submission._id) }}" method="POST">
-                  <input type="hidden" name="student_username" value="{{ submission.student }}">
-                  <textarea name="feedback" class="form-control form-control-sm mb-1" rows="1" required></textarea>
-                  <button type="submit" class="btn btn-info btn-sm">💬</button>
-                </form>
-              {% endif %}
+              <div class="feedback-container">
+                {% if submission.feedback %}
+                  <div class="current-feedback mb-2">{{ submission.feedback }}</div>
+                  <button class="btn btn-sm btn-info edit-feedback-btn">✏️ Edit</button>
+                  <form class="edit-feedback-form d-none"
+                        action="{{ url_for('boundary.update_feedback', submission_id=submission._id) }}"
+                        method="POST">
+                    <textarea name="feedback" class="form-control form-control-sm mb-2" 
+                              rows="3" required>{{ submission.feedback }}</textarea>
+                    <div class="d-flex gap-2">
+                      <button type="submit" class="btn btn-sm btn-success">Update</button>
+                      <button type="button" class="btn btn-sm btn-secondary cancel-edit-btn">Cancel</button>
+                    </div>
+                  </form>
+                {% else %}
+                  <form action="{{ url_for('boundary.add_feedback', submission_id=submission._id) }}" 
+                        method="POST">
+                    <textarea name="feedback" class="form-control form-control-sm mb-2" 
+                              rows="3" required></textarea>
+                    <button type="submit" class="btn btn-sm btn-primary">Submit</button>
+                  </form>
+                {% endif %}
+              </div>
             </td>
             <td class="d-flex gap-1">
               <a href="{{ url_for('boundary.download_submitted_assignment',
@@ -117,13 +137,11 @@
   text-align: center;
   padding: 20px;
 }
-.assignment-frame {
-  margin: 20px auto;
-  width: 80%;
-  min-height: 300px;
-  border: 1px solid #ddd;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.assignment-meta {
+  background: #f8f9fa;
   padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 .submission-section {
   background: #1e1e1e;
@@ -131,5 +149,64 @@
   border-radius: 12px;
   color: white;
 }
+.grade-form .input-group {
+  width: auto;
+  display: inline-flex;
+}
+.grade-input {
+  text-align: center;
+}
+.feedback-container {
+  position: relative;
+  min-width: 250px;
+}
+.current-feedback {
+  white-space: pre-wrap;
+  background: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+.edit-feedback-form {
+  transition: all 0.3s ease;
+}
+.d-none {
+  display: none !important;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Toggle feedback edit form
+  document.querySelectorAll('.edit-feedback-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.feedback-container');
+      container.querySelector('.current-feedback').classList.add('d-none');
+      container.querySelector('.edit-feedback-btn').classList.add('d-none');
+      container.querySelector('.edit-feedback-form').classList.remove('d-none');
+    });
+  });
+
+  // Cancel feedback edit
+  document.querySelectorAll('.cancel-edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.feedback-container');
+      container.querySelector('.current-feedback').classList.remove('d-none');
+      container.querySelector('.edit-feedback-btn').classList.remove('d-none');
+      container.querySelector('.edit-feedback-form').classList.add('d-none');
+    });
+  });
+
+  // Highlight modified grades
+  document.querySelectorAll('.grade-input').forEach(input => {
+    input.addEventListener('change', function() {
+      const form = this.closest('.grade-form');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.classList.remove('btn-primary');
+      submitBtn.classList.add('btn-warning');
+      submitBtn.textContent = 'Update';
+    });
+  });
+});
+</script>
 {% endblock %}

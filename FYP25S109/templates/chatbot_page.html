@@ -91,16 +91,6 @@
         margin-right: 12px;
     }
 
-    .user-avatar {
-        margin-left: 12px;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        position: absolute;
-        right: 0;
-    }
-
     .message-row {
         display: flex;
         align-items: flex-start;
@@ -746,7 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
         tempDiv.innerHTML = processedMessage;  // Use processed message here
         messageDiv.appendChild(tempDiv);
 
-
         if (sender === 'bot') {
             // Create avatar container with mouth element
             const avatarContainer = document.createElement('div');
@@ -795,17 +784,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Auto-speak if it's a new bot message at the bottom
             if (messagesContainer.lastChild === null || 
                 (messagesContainer.lastChild && messagesContainer.lastChild.classList.contains('message-row') && 
-                 messagesContainer.lastChild.classList.contains('user'))) {
+                messagesContainer.lastChild.classList.contains('user'))) {
                 speakText(getTextContent(tempDiv), avatarContainer);
             }
         } else if (sender === 'user') {
-            const userAvatar = document.createElement('img');
-            userAvatar.src = "{{ url_for('boundary.get_profile_pic', file_id=user.profile_pic) }}";
-            userAvatar.alt = 'User Avatar';
-            userAvatar.className = 'user-avatar';
-
+            // Remove the user avatar creation and just append the message
             messageRow.appendChild(messageDiv);
-            messageRow.appendChild(userAvatar);
         }
 
         messagesContainer.appendChild(messageRow);
