@@ -35,43 +35,79 @@ function toggleChat() {
     }
   }
 
-  let typingInterval;
+    let typingInterval;
 
-  function sendOnEnter(event) {
-    if (event.key === 'Enter') {
-      const input = document.getElementById('chat-input');
-      const message = input.value.trim();
-      if (!message) return;
-      appendMessage('You', message, 'user');
-      input.value = '';
-  
-      const status = document.getElementById('status');
-      let dotCount = 0;
-      status.innerText = 'AI is typing';
-      typingInterval = setInterval(() => {
-        dotCount = (dotCount + 1) % 4;
-        status.innerText = 'AI is typing' + '.'.repeat(dotCount);
-      }, 500);
-  
-      fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
-      })
-        .then(res => res.json())
-        .then(data => {
-          clearInterval(typingInterval);
-          status.innerText = '';
-          appendMessage('AI', data.reply || 'Sorry, no reply.', 'bot');
-        })
-        .catch(() => {
-          clearInterval(typingInterval);
-          status.innerText = '';
-          appendMessage('AI', 'Error connecting.', 'bot');
-        });
+    async function sendOnEnter(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const input = e.target;
+        const message = input.value.trim();
+        if (!message) return;
+
+        input.value = "";
+
+        const chatBox = document.getElementById("chat-box");
+        const userBubble = createChatBubble("user", message);
+        chatBox.appendChild(userBubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+          const chatId = input.getAttribute("data-chat-id");
+          const res = await fetch(`/api/chat/${chatId}/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+          });
+
+          const data = await res.json();
+          const reply = data.reply;
+          if (!reply) throw new Error("No reply");
+
+          const botBubble = createChatBubble("bot", reply);
+          chatBox.appendChild(botBubble);
+          chatBox.scrollTop = chatBox.scrollHeight;
+
+          // ✅ Now submit reply to backend to generate voice & video
+          document.getElementById("hidden-reply-text").value = reply;
+          //document.getElementById("voice-form").submit();
+
+          const replyText = document.getElementById("hidden-reply-text").value;
+          const formData = new FormData();
+          formData.append("text", replyText);
+          // ✅ Dynamically capture selected voice
+          const selectedVoice = document.querySelector("#voice-selector").value || "female_en";
+          const lang = selectedVoice.includes("jp") ? "ja" : "en";
+          const gender = selectedVoice.includes("female") ? "female" : "male";
+
+          formData.append("lang", lang);
+          formData.append("gender", gender);
+
+          try {
+            const res = await fetch("/generate_voice_form", {
+              method: "POST",
+              body: formData
+            });
+
+            const data = await res.json();
+            const audioId = data.audio_id;
+
+            if (audioId) {
+              console.log("🎤 Voice generated, audioId:", audioId);
+              await triggerSadTalkerVideo(audioId);
+            } else {
+              console.error("❌ Failed to get audio ID");
+            }
+          } catch (err) {
+            console.error("❌ Error generating voice:", err);
+          }
+
+        } catch (err) {
+          console.error("❌ Chatbot error:", err);
+        }
+      }
     }
-  }
-  
+
+
   function appendMessage(sender, text, role) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-bubble ${role === 'user' ? 'user-bubble' : 'bot-bubble'}`;
@@ -80,4 +116,3 @@ function toggleChat() {
     chat.appendChild(msgDiv);
     msgDiv.scrollIntoView();
   }
-  
