@@ -45,7 +45,34 @@
   <!-- GTTS Voice Generation -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header bg-warning text-dark">
-      <h5 class="mb-0"><i class="fas fa-comment-dots me-2"></i>Generate Voice using Text</h5>
+      <h5 class="mb-0"><i class="fas fa-comment-dots me-2"></i>
+<div id="tts-preview" style="display: none;" class="mt-3">
+    <p><strong>Voice Preview:</strong></p>
+    <audio id="tts-audio" controls></audio>
+</div>
+<input type="hidden" id="tts-audio-id" name="audio_id">
+<script>
+function handleTTS(text) {
+    fetch('/generate_voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const audioElement = document.getElementById('tts-audio');
+            audioElement.src = '/stream_audio/' + data.audio_id;
+            document.getElementById('tts-preview').style.display = 'block';
+            document.getElementById('tts-audio-id').value = data.audio_id;
+            audioElement.play();
+        } else {
+            alert('TTS generation failed: ' + data.error);
+        }
+    });
+}
+</script>
+Generate Voice using Text</h5>
     </div>
     <div class="card-body">
       <form id="gttsForm">
