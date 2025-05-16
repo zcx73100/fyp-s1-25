@@ -154,15 +154,20 @@ class AvatarVideoBoundary:
         search_query = request.args.get("search", "").strip().lower()
 
         # Get all videos for the user
-        all_videos = GenerateVideoController.get_videos(username)
+        draft_videos = list(mongo.db.tempvideo.find({ "username": username }))
+        published_videos = list(mongo.db.generated_videos.find({ "username": username }))
 
         # Filter videos by search query if present
         if search_query:
-            videos = [video for video in all_videos if search_query in video["title"].lower()]
-        else:
-            videos = all_videos
+            draft_videos = [video for video in draft_videos if search_query in video.get("title", "").lower()]
+            published_videos = [video for video in published_videos if search_query in video.get("title", "").lower()]
 
-        return render_template("myVideos.html", username=username, videos=videos, role=role)
+        return render_template("myVideos.html",
+                            username=username,
+                            drafts=draft_videos,
+                            videos=published_videos,
+                            role=role)
+
 
         
     # Route: Generate Voice
