@@ -42,7 +42,7 @@
                 {% for video in linked_videos %}
                     <div class="text-center">
                         <video width="240" controls src="/stream_video/{{ video.video_id }}"></video>
-                        <input type="hidden" name="linked_video_ids" value="{{ video._id }}">
+                        <input type="hidden" name="linked_video_ids" value="{{ video.video_id }}">
                         <div><small>{{ video.text or "Untitled Video" }}</small></div>
                     </div>
                 {% endfor %}
