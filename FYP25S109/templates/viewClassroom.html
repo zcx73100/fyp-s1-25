@@ -31,7 +31,7 @@
     <div class="classroom-section">
         <h3>📂 Materials</h3>
         {% if session['role'] == 'Teacher' %}
-            <a href="{{ url_for('boundary.upload_material', classroom_id=classroom._id) }}" class="btn btn-primary">Upload Material</a>
+            <a href="{{ url_for('boundary.upload_material_page', classroom_id=classroom._id) }}" class="btn btn-primary">Upload Material</a>
             <a href="{{ url_for('boundary.manage_materials', classroom_id=classroom._id) }}" class="btn btn-secondary">Manage Materials</a>
         {% endif %}
         <ul>
