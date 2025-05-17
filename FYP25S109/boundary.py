@@ -1177,6 +1177,34 @@ class LoginBoundary:
             print("[ERROR] Failed to select avatar:", str(e))
             return jsonify(success=False, message='Server error'), 500
 
+    @boundary.route('/assign_avatar', methods=['POST'])
+    def assign_avatar():
+        avatar_id = request.form.get("avatar_id")
+        tts_voice = request.form.get("tts_voice")
+        username = session.get("username")
+
+        if not username:
+            flash("Login required to assign avatar.", "danger")
+            return redirect(url_for("boundary.login"))
+
+        if not avatar_id or not tts_voice:
+            flash("Please select both an avatar and a voice.", "warning")
+            return redirect(url_for("boundary.select_avatar"))
+
+        result = mongo.db.useraccount.update_one(
+            {"username": username},
+            {"$set": {
+                "assistant": avatar_id,
+                "assistant_voice": tts_voice
+            }}
+        )
+
+        if result.modified_count:
+            flash("Assistant avatar and voice assigned successfully!", "success")
+        else:
+            flash("Failed to assign assistant. Try again.", "danger")
+
+        return redirect(url_for("boundary.home"))
 
 # Profile Pic    
 @boundary.route('/profile_pic/<file_id>')
