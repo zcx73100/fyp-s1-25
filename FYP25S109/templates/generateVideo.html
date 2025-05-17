@@ -700,6 +700,15 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
 
+      const source = "{{ request.args.get('source') }}";
+      const classroomId = "{{ request.args.get('classroom_id') }}";
+
+      if (source === "material_upload" && classroomId) {
+        setTimeout(() => {
+          window.location.href = `/upload_material/${classroomId}?video_id=${data.video_id}`;
+        }, 2000); // Delay so user sees the success UI
+      }
+
       if (!saveResponse.ok) {
         throw new Error('Failed to save video record');
       }

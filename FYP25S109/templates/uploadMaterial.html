@@ -35,18 +35,20 @@
             <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" required>
         </div>
 
-        <div class="mb-3">
-            <!-- 🔗 Button to open generate video page -->
-            <div class="mt-2">
-                <small class="form-text text-muted">
-                    Want to add a talking video to this material? Generate one separately below.
-                </small>
-                <a href="{{ url_for('boundary.generate_video_redirect') }}?source=material_upload&classroom_id={{ classroom_id }}" 
-                class="btn btn-outline-primary btn-sm" target="_blank">
-                    ➕ Generate New Video
-                </a>
+        {% if linked_videos %}
+        <div class="mb-3 alert alert-info">
+            <strong>🎬 Linked Videos:</strong>
+            <div class="d-flex flex-wrap gap-3">
+                {% for video in linked_videos %}
+                    <div class="text-center">
+                        <video width="240" controls src="/stream_video/{{ video.video_id }}"></video>
+                        <input type="hidden" name="linked_video_ids" value="{{ video._id }}">
+                        <div><small>{{ video.text or "Untitled Video" }}</small></div>
+                    </div>
+                {% endfor %}
             </div>
         </div>
+        {% endif %}
 
 
 
