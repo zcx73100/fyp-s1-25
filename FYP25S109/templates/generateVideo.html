@@ -121,85 +121,101 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 5000);
     }
 
-    elements.generateVideoBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
+     elements.generateVideoBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
 
-        const avatar = document.querySelector("input[name='avatar_id']:checked");
-        const audioChoice = document.querySelector("input[name='audio_choice']:checked");
-        const videoTitle = document.getElementById('videoTitle').value.trim();
+  const avatar = document.querySelector("input[name='avatar_id']:checked");
+  const audioChoice = document.querySelector("input[name='audio_choice']:checked");
+  const videoTitle = document.getElementById('videoTitle').value.trim();
 
-        if (!audioChoice) return showNotification('Please select or record an audio first!', 'danger');
-        if (!avatar) return showNotification('Please select an avatar!', 'danger');
-        if (!videoTitle) return showNotification('Please enter a video title!', 'danger');
+  if (!audioChoice) {
+    showNotification('Please select or record an audio first!', 'danger');
+    return;
+  }
 
-        const formData = new FormData();
-        formData.append('avatar_id', avatar.value);
-        formData.append('audio_id', audioChoice.value);
-        formData.append('video_title', videoTitle);
-        formData.append('source', "{{ request.args.get('source') }}");
-        formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
-        formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
+  if (!avatar) {
+    showNotification('Please select an avatar!', 'danger');
+    return;
+  }
 
-        elements.progressContainer.style.display = 'block';
-        elements.progressBar.style.width = '0%';
-        elements.progressPercent.textContent = '0%';
-        elements.progressStatus.textContent = 'Starting video generation...';
-        elements.generateVideoBtn.disabled = true;
+  if (!videoTitle) {
+    showNotification('Please enter a video title!', 'danger');
+    return;
+  }
 
-        try {
-        const response = await fetch(`/generate_video/${avatar.value}/${audioChoice.value}`, {
-            method: 'POST',
-            body: formData
-        });
+  const avatarId = avatar.value;
+  const audioId = audioChoice.value;
 
-        const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-            const text = await response.text(); // Read raw HTML or unexpected text
-            showNotification("Server error: " + text.slice(0, 200), "danger");
-            return;
-        }
+  const isValidObjectId = id => /^[a-f\d]{24}$/i.test(id);
+  if (!isValidObjectId(avatarId)) {
+    showNotification('Invalid avatar ID format', 'danger');
+    return;
+  }
 
-        const data = await response.json();
-        if (!data.success || !data.task_id) {
-            showNotification("Video generation failed: " + (data.error || "No task ID"), "danger");
-            return;
-        }
+  if (!isValidObjectId(audioId)) {
+    showNotification('Invalid audio ID format', 'danger');
+    return;
+  }
 
-        // Save the generated video
-        await fetch('/save_generated_video', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                avatar_id: avatar.value,
-                audio_id: audioChoice.value,
-                video_id: data.video_id
-            })
-        });
+  const formData = new FormData();
+  formData.append('avatar_id', avatarId);
+  formData.append('audio_id', audioId);
+  formData.append('video_title', videoTitle);
+  formData.append('source', "{{ request.args.get('source') }}");
+  formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
+  formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
 
-        pollForVideo(data.task_id);
+  elements.progressContainer.style.display = 'block';
+  elements.progressBar.style.width = '0%';
+  elements.progressPercent.textContent = '0%';
+  elements.progressStatus.textContent = 'Starting video generation...';
+  elements.generateVideoBtn.disabled = true;
 
-    } catch (error) {
-        showNotification("Unexpected error: " + error.message, "danger");
+  try {
+    const response = await fetch(`/generate_video/${avatarId}/${audioId}`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await response.text();
+      showNotification("Server error: " + text.slice(0, 200), "danger");
+      return;
     }
 
+    const data = await response.json();
 
-            await fetch('/save_generated_video', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    avatar_id: avatar.value,
-                    audio_id: audioChoice.value,
-                    video_id: data.video_id
-                })
-            });
+    if (!data.success || !data.task_id) {
+      showNotification("Video generation failed: " + (data.error || "Unknown error"), 'danger');
+      return;
+    }
 
-            pollForVideo(data.task_id);
-        } catch (error) {
-            showNotification(error.message, 'danger');
-        } finally {
-            elements.generateVideoBtn.disabled = false;
-        }
+    // Only one save call
+    await fetch('/save_generated_video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        avatar_id: avatarId,
+        audio_id: audioId,
+        video_id: data.video_id
+      })
     });
+
+    elements.progressStatus.textContent = 'Processing video...';
+    elements.progressBar.style.width = '30%';
+    elements.progressPercent.textContent = '30%';
+
+    pollForVideo(data.task_id);
+
+  } catch (error) {
+    showNotification("Unexpected error: " + error.message, 'danger');
+    console.error('Video generation error:', error);
+  } finally {
+    elements.generateVideoBtn.disabled = false;
+  }
+});
+
 
 </script>
 Generate Voice using Text</h5>
