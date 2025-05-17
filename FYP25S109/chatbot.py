@@ -28,7 +28,11 @@ class ChatbotBoundary:
         assistant_avatar = None
 
         if user_info and "assistant" in user_info:
-            avatar_id = user_info["assistant"].get("avatar_id")
+            assistant_data = user_info.get("assistant")
+        if isinstance(assistant_data, dict):
+            avatar_id = assistant_data.get("avatar_id")
+        else:
+            avatar_id = None
             if avatar_id:
                 assistant_avatar = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
 
