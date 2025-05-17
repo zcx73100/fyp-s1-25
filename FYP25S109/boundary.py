@@ -149,32 +149,31 @@ class AvatarVideoBoundary:
         username = session.get("username")
         if not username:
             return redirect(url_for('boundary.login'))
-    
+
         role = session.get("role")
         search_query = request.args.get("search", "").strip().lower()
-    
+
         # Get all videos for the user
         draft_videos = list(mongo.db.tempvideo.find({ "username": username }))
         published_videos = list(mongo.db.generated_videos.find({ "username": username }))
-    
+
         # 🔧 Convert ObjectId to string for template
         for video in draft_videos:
             video["video_id"] = str(video["video_id"])
         for video in published_videos:
             video["video_id"] = str(video["video_id"])
             video["_id"] = str(video["_id"])
-    
+
         # Filter if search provided
         if search_query:
             draft_videos = [v for v in draft_videos if search_query in v.get("title", "").lower()]
             published_videos = [v for v in published_videos if search_query in v.get("title", "").lower()]
-    
-        return render_template("myVideos.html",
-                               username=username,
-                               drafts=draft_videos,
-                               videos=published_videos,
-                               role=role)
 
+        return render_template("myVideos.html",
+                            username=username,
+                            drafts=draft_videos,
+                            videos=published_videos,
+                            role=role)
 
 
 
@@ -2762,12 +2761,6 @@ class TeacherManageQuizBoundary:
             flash("Quiz not found!", "danger")
             return redirect(url_for('manage_quizzes'))
 
-        # Get classroom_id from the quiz for all cases
-        classroom_id = quiz.get("classroom_id")
-        if not classroom_id:
-            flash("Classroom not found for this quiz!", "danger")
-            return redirect(url_for('manage_quizzes'))
-
         if request.method == "POST":
             # Debug output
             debug_info = {
@@ -2790,10 +2783,12 @@ class TeacherManageQuizBoundary:
                         flash("Question deleted successfully!", "success")
                     else:
                         flash("Invalid question index for deletion!", "danger")
-                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                    return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
                 except ValueError:
                     flash("Invalid deletion request!", "danger")
-                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                    return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
 
             # Process quiz update
             quiz_title = request.form.get('title', '').strip()
@@ -2801,7 +2796,8 @@ class TeacherManageQuizBoundary:
             
             if not quiz_title or not quiz_description:
                 flash("Title and description are required!", "danger")
-                return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
 
             # Process questions
             updated_questions = []
@@ -2815,7 +2811,8 @@ class TeacherManageQuizBoundary:
                 question_text = question_text.strip()
                 if not question_text:
                     flash(f"Question {i+1} text cannot be empty!", "danger")
-                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                    return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
 
                 # Get all 4 options
                 options = [
@@ -2828,7 +2825,8 @@ class TeacherManageQuizBoundary:
                 # Validate options
                 if any(not opt for opt in options):
                     flash(f"All 4 options must be provided for Question {i+1}", "danger")
-                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                    return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
 
                 # Validate correct answer
                 try:
@@ -2837,7 +2835,8 @@ class TeacherManageQuizBoundary:
                         raise ValueError
                 except (ValueError, TypeError):
                     flash(f"Invalid correct answer for Question {i+1}", "danger")
-                    return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                    return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
 
                 # Handle image - keep existing or upload new
                 image_data = None
@@ -2847,7 +2846,7 @@ class TeacherManageQuizBoundary:
                     # New image uploaded
                     if not image_file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                         flash("Only PNG, JPG, and JPEG images are allowed!", "danger")
-                        return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                        return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
                     image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 elif request.form.get(f'questions[{i}][existing_image]') == 'true':
                     # Keep existing image if it exists
@@ -2864,7 +2863,8 @@ class TeacherManageQuizBoundary:
 
             if not updated_questions:
                 flash("Quiz must have at least one question!", "danger")
-                return redirect(url_for('update_quiz', quiz_id=quiz_id))
+                return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+
 
             # Update database
             mongo.db.quizzes.update_one(
@@ -2878,7 +2878,7 @@ class TeacherManageQuizBoundary:
             )
 
             flash("Quiz updated successfully!", "success")
-            return redirect(url_for('manage_quizzes', classroom_id=classroom_id))
+            return redirect(url_for('manage_quizzes', classroom_id=quiz["classroom_id"]))
 
         # For GET requests, include debug info in template
         debug_data = {
@@ -2896,11 +2896,10 @@ class TeacherManageQuizBoundary:
             'current_time': datetime.utcnow().isoformat()
         }
 
-        # Include classroom_id in the template context
+        # Then include it in your render_template call
         return render_template("updateQuiz.html", 
                             quiz=quiz, 
                             quiz_id=quiz_id, 
-                            classroom_id=classroom_id,
                             debug_info=debug_info)
 
     @boundary.route('/delete_question/<quiz_id>/<question_index>', methods=['POST'])
