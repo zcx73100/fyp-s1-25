@@ -1142,6 +1142,21 @@ class LoginBoundary:
 
         return render_template("login.html")
     
+    @boundary.route("/select_avatar", methods=["GET"])
+    def select_avatar():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("boundary.login"))
+
+        # Get all admin avatars
+        admin_users = [u["username"] for u in mongo.db.useraccount.find({"role": "Admin"}, {"username": 1})]
+        avatars = list(mongo.db.avatar.find({"username": {"$in": admin_users}}))
+
+        # You may need to add these manually or fetch them from a config/database
+        tts_options = ["en_male_1", "en_female_1", "assistant_male", "assistant_female"]
+
+        return render_template("select_avatar.html", avatars=avatars, tts_options=tts_options)
+
     @staticmethod
     @boundary.route('/select_avatar/<avatar_id>', methods=['POST'])
     def select_avatar(avatar_id):
