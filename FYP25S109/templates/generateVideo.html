@@ -721,7 +721,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById('videoIdInput').value = data.video_id;
       elements.videoPreview.innerHTML = `
         <video width="640" controls autoplay class="rounded shadow">
-          <source src="/stream_video/${data.video_id}" type="video/mp4">
+        <source src="/serve_published_video/${data.video_id}" type="video/mp4">
           Your browser does not support HTML5 video.
         </video>
       `;
