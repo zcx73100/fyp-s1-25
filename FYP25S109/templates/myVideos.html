@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block title %}My Videos{% endblock %}
 
 {% block content %}
@@ -23,16 +22,29 @@
         </div>
     </form>
 
+    <!-- Draft Videos -->
     {% if drafts %}
     <h2>Draft Videos (Auto-deletes in 24h)</h2>
     <div class="row">
         {% for video in drafts %}
         <div class="col-md-4 mb-4">
             <div class="card h-100 border-warning shadow-sm">
+                <video class="card-img-top" controls>
+                    <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id) }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
                 <div class="card-body">
                     <h5 class="card-title">{{ video.title or "Untitled Draft" }}</h5>
                     <p class="card-text text-muted">Created: {{ video.created_at.strftime('%B %d, %Y') }}</p>
                     <span class="badge bg-warning text-dark">Draft</span>
+
+                    <form method="POST" action="{{ url_for('boundary.publish_video', video_id=video.video_id) }}">
+                        <button type="submit" class="btn btn-sm btn-success mt-2">Publish</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('boundary.delete_generated_video', video_id=video.video_id) }}"
+                          onsubmit="return confirm('Are you sure you want to delete this draft?');">
+                        <button type="submit" class="btn btn-danger btn-sm mt-1">Delete</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -40,6 +52,7 @@
     </div>
     {% endif %}
 
+    <!-- Published Videos -->
     {% if videos %}
     <h2 class="mt-5">Published Videos</h2>
     <div class="row">

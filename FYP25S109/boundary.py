@@ -149,24 +149,33 @@ class AvatarVideoBoundary:
         username = session.get("username")
         if not username:
             return redirect(url_for('boundary.login'))
-
+    
         role = session.get("role")
         search_query = request.args.get("search", "").strip().lower()
-
+    
         # Get all videos for the user
         draft_videos = list(mongo.db.tempvideo.find({ "username": username }))
         published_videos = list(mongo.db.generated_videos.find({ "username": username }))
-
-        # Filter videos by search query if present
+    
+        # 🔧 Convert ObjectId to string for template
+        for video in draft_videos:
+            video["video_id"] = str(video["video_id"])
+        for video in published_videos:
+            video["video_id"] = str(video["video_id"])
+            video["_id"] = str(video["_id"])
+    
+        # Filter if search provided
         if search_query:
-            draft_videos = [video for video in draft_videos if search_query in video.get("title", "").lower()]
-            published_videos = [video for video in published_videos if search_query in video.get("title", "").lower()]
-
+            draft_videos = [v for v in draft_videos if search_query in v.get("title", "").lower()]
+            published_videos = [v for v in published_videos if search_query in v.get("title", "").lower()]
+    
         return render_template("myVideos.html",
-                            username=username,
-                            drafts=draft_videos,
-                            videos=published_videos,
-                            role=role)
+                               username=username,
+                               drafts=draft_videos,
+                               videos=published_videos,
+                               role=role)
+
+
 
 
         
@@ -616,27 +625,44 @@ class AvatarVideoBoundary:
             if not username:
                 return jsonify(success=False, error="Unauthorized"), 401
 
+            fs = get_fs()
+
+            # First try to delete from generated_videos
             video = mongo.db.generated_videos.find_one({
                 "video_id": ObjectId(video_id),
                 "username": username
             })
+            if video:
+                fs.delete(ObjectId(video["video_id"]))
+                mongo.db.generated_videos.delete_one({
+                    "video_id": ObjectId(video_id),
+                    "username": username
+                })
+                flash("Published video deleted.", "success")
+                return redirect(url_for('boundary.my_videos'))
 
-            if not video:
-                return jsonify(success=False, error="Video not found"), 404
-
-            fs = get_fs()  # ✅ Define GridFS instance
-            fs.delete(ObjectId(video["video_id"]))  # ✅ Safe call
-
-            result = mongo.db.generated_videos.delete_one({
+            # If not found, try tempvideo (draft)
+            draft = mongo.db.tempvideo.find_one({
                 "video_id": ObjectId(video_id),
                 "username": username
             })
+            if draft:
+                fs.delete(ObjectId(draft["video_id"]))
+                mongo.db.tempvideo.delete_one({
+                    "video_id": ObjectId(video_id),
+                    "username": username
+                })
+                flash("Draft video deleted.", "success")
+                return redirect(url_for('boundary.my_videos'))
 
+            flash("Video not found.", "danger")
             return redirect(url_for('boundary.my_videos'))
 
         except Exception as e:
             print(f"Error deleting video: {str(e)}")
-            return jsonify(success=False, error=str(e)), 500
+            flash("An error occurred while deleting the video.", "danger")
+            return redirect(url_for('boundary.my_videos'))
+
 
         
     @staticmethod
@@ -653,7 +679,7 @@ class AvatarVideoBoundary:
                 end = int(end) if end else file_size - 1
                 length = end - start + 1
 
-                grid_out.seek(start)  # Move to the requested byte position
+                grid_out.seek(start)
                 data = grid_out.read(length)
 
                 response = Response(data, status=206, mimetype=grid_out.content_type)
@@ -662,12 +688,12 @@ class AvatarVideoBoundary:
                 response.headers.add('Content-Length', str(length))
                 return response
 
-            # Full video response (if no Range header)
             return Response(grid_out.read(), mimetype=grid_out.content_type)
 
         except Exception as e:
             logging.error(f"Failed to serve video: {str(e)}")
             return "Video not found", 404
+
     
     @staticmethod
     @boundary.route("/get_voice/<audio_id>")
@@ -882,13 +908,15 @@ class AvatarVideoBoundary:
                 flash("You must be logged in.", "danger")
                 return redirect(url_for("boundary.login"))
 
-            # First: Try finding the video in tempvideo (draft)
-            temp_video = mongo.db.tempvideo.find_one({"video_id": video_id, "username": username})
+            video_oid = ObjectId(video_id)  # 🔧 Always treat as ObjectId for GridFS keys
+
+            # First: Try finding the video in tempvideo (drafts use 'video_id' field)
+            temp_video = mongo.db.tempvideo.find_one({"video_id": video_oid, "username": username})
 
             if temp_video:
                 avatar_id = temp_video.get("avatar_id")
 
-                # Prevent duplicate publishes for same avatar
+                # ✅ Prevent duplicate publishes for same avatar
                 existing = mongo.db.generated_videos.find_one({
                     "username": username,
                     "avatar_id": avatar_id,
@@ -899,20 +927,20 @@ class AvatarVideoBoundary:
                     flash("You already have a published video using this avatar.", "warning")
                     return redirect(url_for("boundary.my_videos"))
 
-                # Prepare and insert into generated_videos
+                # ✅ Move from temp to generated
                 new_video = dict(temp_video)
                 new_video.pop("_id", None)
                 new_video["is_published"] = True
                 new_video["published_at"] = datetime.utcnow()
 
                 mongo.db.generated_videos.insert_one(new_video)
-                mongo.db.tempvideo.delete_one({"video_id": video_id})
+                mongo.db.tempvideo.delete_one({"video_id": video_oid, "username": username})
 
                 flash("Draft video published successfully!", "success")
                 return redirect(url_for("boundary.my_videos"))
 
-            # Else, try updating an existing one in generated_videos
-            video = mongo.db.generated_videos.find_one({"_id": ObjectId(video_id), "username": username})
+            # Second: Try updating directly in generated_videos (already published once)
+            video = mongo.db.generated_videos.find_one({"_id": video_oid, "username": username})
             if video:
                 avatar_id = video.get("avatar_id")
 
@@ -920,7 +948,7 @@ class AvatarVideoBoundary:
                     "username": username,
                     "avatar_id": avatar_id,
                     "is_published": True,
-                    "_id": {"$ne": ObjectId(video_id)}
+                    "_id": {"$ne": video_oid}
                 })
 
                 if existing:
@@ -928,7 +956,7 @@ class AvatarVideoBoundary:
                     return redirect(url_for("boundary.my_videos"))
 
                 mongo.db.generated_videos.update_one(
-                    {"_id": ObjectId(video_id)},
+                    {"_id": video_oid},
                     {"$set": {"is_published": True}}
                 )
                 flash("Video published successfully!", "success")
@@ -941,21 +969,30 @@ class AvatarVideoBoundary:
 
         return redirect(url_for("boundary.my_videos"))
 
+
         
     @boundary.route("/unpublish_video/<video_id>", methods=["POST"])
     def unpublish_video(video_id):
         try:
-            if 'username' not in session:
+            username = session.get("username")
+            if not username:
                 flash("You must be logged in to perform this action.", "danger")
                 return redirect(url_for("boundary.login"))
 
-            mongo.db.generated_videos.update_one(
-                {"_id": ObjectId(video_id), "username": session['username']},
+            result = mongo.db.generated_videos.update_one(
+                {"_id": ObjectId(video_id), "username": username},
                 {"$set": {"is_published": False}}
             )
-            flash("Video unpublished successfully!", "success")
+
+            if result.modified_count == 0:
+                flash("Video not found or already unpublished.", "warning")
+            else:
+                flash("Video unpublished successfully!", "success")
+
         except Exception as e:
+            logging.error(f"Unpublish Error: {e}")
             flash(f"Failed to unpublish video: {str(e)}", "danger")
+
         return redirect(url_for("boundary.my_videos"))
 
     @boundary.route('/download_video/<video_id>')
@@ -996,6 +1033,7 @@ class AvatarVideoBoundary:
             source=source,
             debug_mode=True
         )
+        
     @staticmethod
     @boundary.route("/search_video", methods=["POST"])
     def search_video():
