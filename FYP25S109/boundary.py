@@ -149,32 +149,32 @@ class AvatarVideoBoundary:
         username = session.get("username")
         if not username:
             return redirect(url_for('boundary.login'))
-
+    
         role = session.get("role")
         search_query = request.args.get("search", "").strip().lower()
-
-        # Fetch drafts from tempvideo
+    
+        # Get all videos for the user
         draft_videos = list(mongo.db.tempvideo.find({ "username": username }))
-        for draft in draft_videos:
-            if draft.get("video_id"):
-                draft["video_id"] = str(draft["video_id"])  # ✅ convert to string
-
-        # Fetch published videos
         published_videos = list(mongo.db.generated_videos.find({ "username": username }))
-        for pub in published_videos:
-            if pub.get("video_id"):
-                pub["video_id"] = str(pub["video_id"])  # ✅ convert to string
-
-        # Filter by title
+    
+        # 🔧 Convert ObjectId to string for template
+        for video in draft_videos:
+            video["video_id"] = str(video["video_id"])
+        for video in published_videos:
+            video["video_id"] = str(video["video_id"])
+            video["_id"] = str(video["_id"])
+    
+        # Filter if search provided
         if search_query:
             draft_videos = [v for v in draft_videos if search_query in v.get("title", "").lower()]
             published_videos = [v for v in published_videos if search_query in v.get("title", "").lower()]
-
+    
         return render_template("myVideos.html",
-                            username=username,
-                            drafts=draft_videos,
-                            videos=published_videos,
-                            role=role)
+                               username=username,
+                               drafts=draft_videos,
+                               videos=published_videos,
+                               role=role)
+
 
 
 
