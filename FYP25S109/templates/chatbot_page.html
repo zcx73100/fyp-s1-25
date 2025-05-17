@@ -792,24 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             ttsStopBtn.addEventListener('click', stopSpeech);
             
-            // Auto-speak if it's a new bot message at the bottom
-            if (messagesContainer.lastChild === null || 
-                (messagesContainer.lastChild && messagesContainer.lastChild.classList.contains('message-row') && 
-                 messagesContainer.lastChild.classList.contains('user'))) {
-                speakText(getTextContent(tempDiv), avatarContainer);
-            }
-        } else if (sender === 'user') {
-            const userAvatar = document.createElement('img');
-            userAvatar.src = "{{ url_for('boundary.get_profile_pic', file_id=user.profile_pic) }}";
-            userAvatar.alt = 'User Avatar';
-            userAvatar.className = 'user-avatar';
-
-            messageRow.appendChild(messageDiv);
-            messageRow.appendChild(userAvatar);
-        }
-
-        messagesContainer.appendChild(messageRow);
-        
+    
         // Process MathJax after the message is added
         if (window.MathJax) {
             MathJax.typesetPromise([messageRow]).catch(err => {
