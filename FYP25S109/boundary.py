@@ -3180,7 +3180,7 @@ class StudentAssignmentBoundary:
         return '.' in filename and \
                filename.rsplit('.', 1)[1].lower() in StudentAssignmentBoundary.ALLOWED_EXTENSIONS
 
-    @boundary.route('/student/view_submission/<assignment_id>/<filename>', methods=['GET', 'POST'])
+    @boundary.route('/student/view_submission/<assignment_id>', methods=['GET', 'POST'])
     def submit_assignment(assignment_id, filename):
         """Handles assignment submission and displays the submission form."""
         try:
