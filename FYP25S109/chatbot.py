@@ -27,14 +27,17 @@ class ChatbotBoundary:
         user_info = mongo.db.useraccount.find_one({"username": username})
         assistant_avatar = None
 
-        if user_info and "assistant" in user_info:
-            assistant_data = user_info.get("assistant")
+        assistant_data = user_info.get("assistant")
+        avatar_id = None
         if isinstance(assistant_data, dict):
             avatar_id = assistant_data.get("avatar_id")
-        else:
-            avatar_id = None
-            if avatar_id:
+        
+        if avatar_id:
+            try:
                 assistant_avatar = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+            except Exception as e:
+                print(f"[Error] Invalid avatar_id in user data: {avatar_id} - {e}")
+                assistant_avatar = None
 
         chatbot_chats = list(mongo.db.chatbot_chats.find({"username": username}))
 
