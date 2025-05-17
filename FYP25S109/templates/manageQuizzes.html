@@ -28,7 +28,7 @@
             <p>{{ quiz.description or "No description provided." }}</p>
             <div class="quiz-actions">
                 <a href="{{ url_for('boundary.view_quiz', quiz_id=quiz._id) }}" class="btn btn-outline-info btn-sm">🔍 View</a>
-                <form action="{{ url_for('boundary.update_quiz', quiz_id=quiz._id) }}" method="GET" style="display:inline;">
+                <form action="{{ url_for('boundary.update_quiz', quiz_id=quiz._id, classroom_id=classroom_id) }}" method="GET" style="display:inline;">
                     <button type="submit" class="btn btn-outline-warning btn-sm">✏️ Edit</button>
                 </form>
                 <form action="{{ url_for('boundary.delete_quiz', quiz_id=quiz._id) }}" method="POST" style="display:inline;">

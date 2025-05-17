@@ -2724,6 +2724,12 @@ class TeacherManageQuizBoundary:
             flash("Quiz not found!", "danger")
             return redirect(url_for('manage_quizzes'))
 
+        # Get classroom_id from the quiz for all cases
+        classroom_id = quiz.get("classroom_id")
+        if not classroom_id:
+            flash("Classroom not found for this quiz!", "danger")
+            return redirect(url_for('manage_quizzes'))
+
         if request.method == "POST":
             # Debug output
             debug_info = {
@@ -2834,7 +2840,7 @@ class TeacherManageQuizBoundary:
             )
 
             flash("Quiz updated successfully!", "success")
-            return redirect(url_for('manage_quizzes', classroom_id=quiz["classroom_id"]))
+            return redirect(url_for('manage_quizzes', classroom_id=classroom_id))
 
         # For GET requests, include debug info in template
         debug_data = {
@@ -2852,12 +2858,12 @@ class TeacherManageQuizBoundary:
             'current_time': datetime.utcnow().isoformat()
         }
 
-        # Then include it in your render_template call
+        # Include classroom_id in the template context
         return render_template("updateQuiz.html", 
                             quiz=quiz, 
                             quiz_id=quiz_id, 
+                            classroom_id=classroom_id,
                             debug_info=debug_info)
-        return render_template("updateQuiz.html", quiz=quiz, quiz_id=quiz_id, debug_info=debug_info)
 
     @boundary.route('/delete_question/<quiz_id>/<question_index>', methods=['POST'])
     def delete_question(quiz_id, question_index):
