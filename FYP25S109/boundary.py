@@ -2203,59 +2203,22 @@ class TeacherManageStudentsBoundary:
 
 # Manage Material
 class TeacherManageMaterialBoundary:
-    @boundary.route('/upload_material/<classroom_id>', methods=["GET", "POST"])
-    def upload_material(classroom_id):
-        if request.method == "POST":
-            title = request.form.get("title")
-            description = request.form.get("description")
-            linked_video_ids = request.form.getlist("linked_video_ids")
+    @boundary.route('/upload_material', methods=['POST'])
+    def upload_material():
+        classroom_id = request.form.get('classroom_id')
+        title = request.form.get('title')
+        description = request.form.get('description')
+        file = request.files.get('file')
 
-            file = request.files.get("file")
-            if not file:
-                flash("No file uploaded.", "danger")
-                return redirect(url_for("boundary.upload_material", classroom_id=classroom_id))
+        # Call the Controller to process the material upload
+        result = UploadMaterialController.upload_material(title, file, session.get('username'), classroom_id, description)
 
-            try:
-                filename = file.filename
-                saved_file_id = get_fs().put(file, filename=filename, content_type=file.content_type)
-
-                material = {
-                    "classroom_id": ObjectId(classroom_id),
-                    "title": title,
-                    "description": description,
-                    "file_id": saved_file_id,
-                    "file_name": filename,
-                    "created_at": datetime.utcnow(),
-                    "linked_video_ids": [ObjectId(v) for v in linked_video_ids if v]
-                }
-
-                mongo.db.materials.insert_one(material)
-                flash("Material uploaded successfully with linked videos!", "success")
-                return redirect(url_for("boundary.view_classroom", classroom_id=classroom_id))
-            except Exception as e:
-                print("❌ Upload error:", e)
-                flash(f"Upload failed: {str(e)}", "danger")
-                return redirect(url_for("boundary.upload_material", classroom_id=classroom_id))
-
-        # GET request
-        video_ids = request.args.getlist("video_id")  # allow ?video_id=...&video_id=...
-        linked_videos = []
-        for vid in video_ids:
-            try:
-                video = mongo.db.generated_videos.find_one({
-                    "_id": ObjectId(vid),
-                    "username": session.get("username")
-                })
-                if video:
-                    linked_videos.append(video)
-            except:
-                continue
-
-        return render_template(
-            "uploadMaterial.html",
-            classroom_id=classroom_id,
-            linked_videos=linked_videos
-        )
+        if result["success"]:
+            flash(result["message"], 'success')
+            return redirect(url_for('boundary.manage_materials', classroom_id=classroom_id))
+        else:
+            flash(result["message"], 'danger')
+            return redirect(request.url)
 
     @boundary.route('/upload_material/<classroom_id>', methods=['GET'])
     def upload_material_page(classroom_id):
