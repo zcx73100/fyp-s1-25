@@ -746,7 +746,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (sender === 'user') {
             const userAvatar = document.createElement('img');
-            userAvatar.src = "{{ url_for('boundary.get_profile_pic', file_id=user.profile_pic) }}";
+            {% if assistant_avatar %}
+                  userAvatar.src = "data:image/png;base64,{{ assistant_avatar.image_data }}";
+            {% else %}
+                  userAvatar.src = "/static/default_avatar.png";  <!-- Fallback image -->
+            {% endif %}
             userAvatar.alt = 'User Avatar';
             userAvatar.className = 'user-avatar';
 
