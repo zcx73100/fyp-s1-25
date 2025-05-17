@@ -102,7 +102,11 @@ class ChatbotBoundary:
 
     @chatbot.route('/select_avatar')
     def select_avatar():
-        avatars = list(mongo.db.avatar.find({"username": "admin"}))
+        admin_users = mongo.db.useraccount.find({"role": "Admin"}, {"username": 1})
+        admin_usernames = [u["username"] for u in admin_users]
+
+        # Step 2: Get avatars uploaded by those admin users
+        avatars = list(mongo.db.avatar.find({"username": {"$in": admin_usernames}}))        
         tts_options = ["male_en", "female_en", "neutral_en",
         "male_es", "female_es",
         "female_fr", "neutral_fr",
