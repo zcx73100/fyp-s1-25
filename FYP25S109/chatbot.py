@@ -1,10 +1,13 @@
-from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for, Response
+from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for
 import requests
 from datetime import datetime
 from flask_pymongo import PyMongo
 import os
 from . import mongo
 from bson import ObjectId
+from .controller import GenerateVideoController
+from bson.errors import InvalidId
+
 
 # Configuration for the chatbot API
 API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -15,51 +18,105 @@ chatbot = Blueprint('chatbot', __name__)
 
 # Boundary Layer (routes)
 class ChatbotBoundary:
-    @chatbot.route('/chatbot')
+    @chatbot.route("/chatbot")
     def chatbot_page():
-        if 'username' not in session:
-            return redirect(url_for('boundary.login'))
+        username = session.get("username")
+        if not username:
+            return redirect("/login")  # or your auth check
 
-        chatbot_chats = mongo.db.chatbot_chats.find({"username": session['username']}).sort("timestamp", -1).limit(10)
-        user_info = mongo.db.useraccount.find_one({"username": session['username']})
+        user_info = mongo.db.useraccount.find_one({"username": username})
+        assistant_avatar = None
 
-        avatar_id = user_info.get("assistant")
-        assistant_voice = user_info.get("assistant_voice")
-        avatar_img = None
+        if user_info and "assistant" in user_info:
+            avatar_id = user_info["assistant"].get("avatar_id")
+            if avatar_id:
+                assistant_avatar = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
 
-        if avatar_id:
-            try:
-                avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
-                avatar_img = avatar_doc.get("image_data") if avatar_doc else None
-            except Exception as e:
-                print(f"[Chatbot Avatar Load Error] {e}")
+        chatbot_chats = list(mongo.db.chatbot_chats.find({"username": username}))
 
-        return render_template("chatbot_page.html",
-            chatbot_chats=chatbot_chats,
+        return render_template(
+            "chatbot_page.html",
             user=user_info,
-            avatar_img=avatar_img,
-            assistant_voice=assistant_voice
+            chatbot_chats=chatbot_chats,
+            assistant_avatar=assistant_avatar
         )
+    
+    @chatbot.route("/chatbot/process", methods=["POST"])
+    def chatbot_process():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("boundary.login"))
 
-    @chatbot.route('/chatbot/avatar/<avatar_id>')
-    def serve_avatar(avatar_id):
+        text = request.form.get("text", "").strip()
+        lang = request.form.get("lang", "en")
+        gender = request.form.get("gender", "female")
+
+        if not text:
+            return "❌ No text provided", 400
+
+        # ✅ Generate voice
+        controller = GenerateVideoController()
+        audio_id = controller.generate_voice(text, lang, gender)
+        if not audio_id:
+            return "❌ Voice generation failed", 500
+
+        # ✅ Redirect to SadTalker-compatible route with audio_id
+        return redirect(url_for("boundary.generate_video_from_session_post", audio_id=audio_id, text=text))
+
+
+    @chatbot.route('/select_avatar/assign', methods=['POST'])
+    def assign_avatar():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("chatbot.chatbot_page"))
+
+        avatar_id = request.form.get("avatar_id")
+        tts_voice = request.form.get("tts_voice")
+
+        if not avatar_id or not tts_voice:
+            return "Missing avatar or TTS voice", 400
+
         try:
-            file = mongo.db.fs.files.find_one({"_id": ObjectId(avatar_id)})
-            if not file:
-                return "Avatar not found", 404
+            avatar_obj_id = ObjectId(avatar_id)
+        except InvalidId:
+            print("[Error] Invalid avatar_id format:", avatar_id)
+            return "Invalid avatar ID", 400
 
-            avatar_data = mongo.db.fs.chunks.find({"files_id": ObjectId(avatar_id)}).sort("n")
-            image_bytes = b"".join(chunk["data"] for chunk in avatar_data)
-
-            return Response(image_bytes, content_type=file.get("contentType", "image/png"))
+        # Save to user account
+        try:
+            mongo.db.useraccount.update_one(
+                {"username": username},
+                {"$set": {
+                    "assistant": {
+                        "avatar_id": avatar_obj_id,
+                        "tts_voice": tts_voice
+                    }
+                }}
+            )
         except Exception as e:
-            print(f"[Avatar Serve Error] {e}")
-            return "Error serving avatar", 500
+            print("[Error] Failed to update user account:", e)
+            return "Database update failed", 500
+
+        return redirect(url_for("chatbot.chatbot_page"))
 
 
+    @chatbot.route('/select_avatar')
+    def select_avatar():
+        avatars = list(mongo.db.avatar.find({"username": "admin"}))
+        tts_options = ["male_en", "female_en", "neutral_en",
+        "male_es", "female_es",
+        "female_fr", "neutral_fr",
+        "neutral_de",
+        "neutral_it",
+        "neutral_ja",
+        "neutral_ko",
+        "neutral_id"]  # adjust based on your supported voices
+        
+        return render_template("select_avatar.html", avatars=avatars, tts_options=tts_options)
 
     @chatbot.route('/api/chat', methods=['POST'])
     def handle_chat():
+        # Check if user is authenticated
         if 'username' not in session:
             return jsonify({"error": "Unauthorized"}), 401
 
@@ -67,50 +124,9 @@ class ChatbotBoundary:
         if not user_message:
             return jsonify({"error": "No message provided"}), 400
 
-        username = session['username']
-        reply = ChatbotController.process_chat(username, user_message)
-
-        video_url = None  # Default fallback
-
-        try:
-            # 🔍 Load user voice and avatar settings
-            user = mongo.db.useraccount.find_one({"username": username})
-            assistant_config = user.get("assistant", {})
-            avatar_id = assistant_config.get("avatar_id")
-            tts_voice = assistant_config.get("tts_voice", "neutral_en")
-
-            if not avatar_id:
-                raise Exception("No avatar assigned.")
-
-            # ✅ Parse voice config (e.g., 'female_en')
-            parts = tts_voice.split("_")
-            gender = parts[0]
-            lang = parts[1] if len(parts) > 1 else "en"
-
-            # ✅ Generate voice using backend route
-            audio_resp = requests.post(
-                url_for("boundary.upload_synthesized_voice", _external=True),
-                data={"text": reply, "lang": lang, "gender": gender}
-            )
-            audio_data = audio_resp.json()
-            if not audio_data.get("success"):
-                raise Exception(f"Voice gen failed: {audio_data.get('error')}")
-
-            audio_id = audio_data["audio_id"]
-
-            # ✅ Generate video using avatar + audio
-            video_resp = requests.post(
-                url_for("boundary.generate_video_for_chatbot", avatar_id=avatar_id, audio_id=audio_id, _external=True)
-            )
-            video_data = video_resp.json()
-            if not video_data.get("success"):
-                raise Exception(f"Video gen failed: {video_data.get('error')}")
-
-            video_url = video_data["video_url"]
-
-        except Exception as e:
-            print(f"[Auto Video Error] {e}")
-
+        # Controller Layer
+        reply = ChatbotController.process_chat(session['username'], user_message)
+        return jsonify({"reply": reply})
     
     @chatbot.route('/api/chat/new', methods=['POST'])
     def new_chat():
