@@ -60,7 +60,6 @@ class ChatbotBoundary:
 
     @chatbot.route('/api/chat', methods=['POST'])
     def handle_chat():
-        # Check if user is authenticated
         if 'username' not in session:
             return jsonify({"error": "Unauthorized"}), 401
 
@@ -68,9 +67,50 @@ class ChatbotBoundary:
         if not user_message:
             return jsonify({"error": "No message provided"}), 400
 
-        # Controller Layer
-        reply = ChatbotController.process_chat(session['username'], user_message)
-        return jsonify({"reply": reply})
+        username = session['username']
+        reply = ChatbotController.process_chat(username, user_message)
+
+        video_url = None  # Default fallback
+
+        try:
+            # 🔍 Load user voice and avatar settings
+            user = mongo.db.useraccount.find_one({"username": username})
+            assistant_config = user.get("assistant", {})
+            avatar_id = assistant_config.get("avatar_id")
+            tts_voice = assistant_config.get("tts_voice", "neutral_en")
+
+            if not avatar_id:
+                raise Exception("No avatar assigned.")
+
+            # ✅ Parse voice config (e.g., 'female_en')
+            parts = tts_voice.split("_")
+            gender = parts[0]
+            lang = parts[1] if len(parts) > 1 else "en"
+
+            # ✅ Generate voice using backend route
+            audio_resp = requests.post(
+                url_for("boundary.upload_synthesized_voice", _external=True),
+                data={"text": reply, "lang": lang, "gender": gender}
+            )
+            audio_data = audio_resp.json()
+            if not audio_data.get("success"):
+                raise Exception(f"Voice gen failed: {audio_data.get('error')}")
+
+            audio_id = audio_data["audio_id"]
+
+            # ✅ Generate video using avatar + audio
+            video_resp = requests.post(
+                url_for("boundary.generate_video_for_chatbot", avatar_id=avatar_id, audio_id=audio_id, _external=True)
+            )
+            video_data = video_resp.json()
+            if not video_data.get("success"):
+                raise Exception(f"Video gen failed: {video_data.get('error')}")
+
+            video_url = video_data["video_url"]
+
+        except Exception as e:
+            print(f"[Auto Video Error] {e}")
+
     
     @chatbot.route('/api/chat/new', methods=['POST'])
     def new_chat():
