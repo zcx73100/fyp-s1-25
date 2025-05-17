@@ -635,9 +635,24 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Video Generation
+  function simulateProgressBar() {
+    let progress = 10;
+    const interval = setInterval(() => {
+      if (progress < 90) {
+        progress += 2 + Math.random() * 3;
+        elements.progressBar.style.width = `${progress}%`;
+        elements.progressPercent.textContent = `${Math.floor(progress)}%`;
+        elements.progressStatus.textContent = `Generating video...`;
+      } else {
+        clearInterval(interval);
+      }
+    }, 300);
+    return interval;
+  }
+
   elements.generateVideoBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-    
+
     const avatar = document.querySelector("input[name='avatar_id']:checked");
     const audioChoice = document.querySelector("input[name='audio_choice']:checked");
     const videoTitle = document.getElementById('videoTitle').value.trim();
@@ -660,7 +675,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const formData = new FormData();
     formData.append('avatar_id', avatar.value);
     formData.append('audio_id', audioChoice.value);
-    formData.append('video_title', videoTitle);  // Add title to form data
+    formData.append('video_title', videoTitle);
     formData.append('source', "{{ request.args.get('source') }}");
     formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
     formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
@@ -671,6 +686,8 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.progressStatus.textContent = 'Starting video generation...';
     elements.generateVideoBtn.disabled = true;
 
+    const progressInterval = simulateProgressBar(); // ✅ Start fake progress
+
     try {
       const response = await fetch(`/generate_video/${avatar.value}/${audioChoice.value}`, {
         method: 'POST',
@@ -678,18 +695,12 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const data = await response.json();
-      if (data.success) {
-        const taskId = data.task_id;
-        pollForVideo(taskId);
-      }
 
       if (!data.success) {
         throw new Error(data.error || 'Video generation failed');
       }
 
-      elements.progressStatus.textContent = 'Processing video...';
-      elements.progressBar.style.width = '50%';
-      elements.progressPercent.textContent = '50%';
+      showNotification("✅ Video generated successfully!", "success");
 
       const saveResponse = await fetch('/save_generated_video', {
         method: 'POST',
@@ -701,27 +712,27 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
 
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save video record');
+      }
+
       const source = "{{ request.args.get('source') }}";
       const classroomId = "{{ request.args.get('classroom_id') }}";
 
       if (source === "material_upload" && classroomId) {
         setTimeout(() => {
           window.location.href = `/upload_material/${classroomId}?video_id=${data.video_id}`;
-        }, 2000); // Delay so user sees the success UI
-      }
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save video record');
+        }, 2000);
       }
 
       elements.progressBar.style.width = '100%';
       elements.progressPercent.textContent = '100%';
       elements.progressStatus.textContent = 'Video generated successfully!';
-
       document.getElementById('videoIdInput').value = data.video_id;
+
       elements.videoPreview.innerHTML = `
         <video width="640" controls autoplay class="rounded shadow">
-        <source src="/serve_published_video/${data.video_id}" type="video/mp4">
+          <source src="/serve_published_video/${data.video_id}" type="video/mp4">
           Your browser does not support HTML5 video.
         </video>
       `;
@@ -732,6 +743,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showNotification(error.message, 'danger');
       console.error('Video generation error:', error);
     } finally {
+      clearInterval(progressInterval); // ✅ Stop the animation
       elements.generateVideoBtn.disabled = false;
     }
   });
@@ -988,7 +1000,7 @@ document.getElementById("gttsForm").addEventListener("submit", async function (e
   }
 });
 
-});
+
 
 </script>
 {% endblock %}
