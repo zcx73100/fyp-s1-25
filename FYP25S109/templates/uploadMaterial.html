@@ -31,26 +31,9 @@
         </div>
 
         <div class="mb-3">
-            <label for="file" class="form-label">Choose a Material File (required):</label>
+            <label for="file" class="form-label">Choose a File:</label>
             <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" required>
         </div>
-
-        {% if linked_videos %}
-        <div class="mb-3 alert alert-info">
-            <strong>🎬 Linked Videos:</strong>
-            <div class="d-flex flex-wrap gap-3">
-                {% for video in linked_videos %}
-                    <div class="text-center">
-                        <video width="240" controls src="/stream_video/{{ video.video_id }}"></video>
-                        <input type="hidden" name="linked_video_ids" value="{{ video.video_id }}">
-                        <div><small>{{ video.text or "Untitled Video" }}</small></div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-
 
         <button type="submit" class="btn btn-primary">Upload Material</button>
         <a href="{{ url_for('boundary.view_classroom', classroom_id=classroom_id) }}" class="btn btn-secondary">Cancel</a>
