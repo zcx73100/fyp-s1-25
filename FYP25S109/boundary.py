@@ -348,17 +348,6 @@ class AvatarVideoBoundary:
             "task_id": task_id
         })
 
-    @boundary.route('/check_video_status/<task_id>')
-    def check_video_status(task_id):
-        try:
-            task = mongo.db.generated_tasks.find_one({"task_id": task_id})
-            if task and task.get("status") == "ready":
-                return jsonify(success=True, status="ready")
-            return jsonify(success=True, status="pending")
-        except Exception as e:
-            print("Error checking video status:", e)
-            return jsonify(success=False, error=str(e)), 500
-
     @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
     def cleanup_old_temp_videos():
         cutoff = datetime.utcnow() - timedelta(hours=6)
