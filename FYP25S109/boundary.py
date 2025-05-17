@@ -877,22 +877,13 @@ class AvatarVideoBoundary:
     @boundary.route("/serve_published_video/<file_id>")
     def serve_published_video(file_id):
         try:
-            print(f"🔍  Looking for published video with _id={file_id} (type: {type(file_id)})")
-            video = mongo.db.generated_videos.find_one({"_id": ObjectId(file_id), "is_published": True},{})
-            if not video:
-                return jsonify(success=False, error="Video not found or not published"), 404
-
-            # Get the GridFS file ID
-            gridfs_id = video.get("video_id")
-            if not gridfs_id:
-                return jsonify(success=False, error="Video file not found"), 404
-
-            # Stream the video from GridFS
-            file = get_fs().get(ObjectId(gridfs_id))
+            print(f"🔍 Streaming GridFS file directly: {file_id}")
+            file = get_fs().get(ObjectId(file_id))
             return send_file(file, mimetype="video/mp4", as_attachment=False)
         except Exception as e:
-            print(f"Error serving published video {file_id}: {str(e)}")
-            return jsonify(success=False, error=str(e)), 500
+            print(f"Error streaming video: {e}")
+            return jsonify(success=False, error=str(e)), 404
+
     
     #This function is used to publish the video to the homepage (1 video 1 avatar)
     @boundary.route("/publish_video/<video_id>", methods=["POST"])
