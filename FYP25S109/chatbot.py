@@ -23,9 +23,23 @@ class ChatbotBoundary:
         chatbot_chats = mongo.db.chatbot_chats.find({"username": session['username']}).sort("timestamp", -1).limit(10)
         user_info = mongo.db.useraccount.find_one({"username": session['username']})
 
-        avatar_id = user_info.get("assistant")  # ✅ Already a string
+        avatar_id = user_info.get("assistant")
+        assistant_voice = user_info.get("assistant_voice")
+        avatar_img = None
 
-        return render_template("chatbot_page.html", chatbot_chats=chatbot_chats, user=user_info, avatar_id=avatar_id)
+        if avatar_id:
+            try:
+                avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+                avatar_img = avatar_doc.get("image_data") if avatar_doc else None
+            except Exception as e:
+                print(f"[Chatbot Avatar Load Error] {e}")
+
+        return render_template("chatbot_page.html",
+            chatbot_chats=chatbot_chats,
+            user=user_info,
+            avatar_img=avatar_img,
+            assistant_voice=assistant_voice
+        )
 
     @chatbot.route('/chatbot/avatar/<avatar_id>')
     def serve_avatar(avatar_id):
