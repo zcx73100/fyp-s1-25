@@ -2274,6 +2274,9 @@ class TeacherManageMaterialBoundary:
             linked_videos=linked_videos
         )
 
+    @boundary.route('/upload_material/<classroom_id>', methods=['GET'])
+    def upload_material_page(classroom_id):
+        return render_template("uploadMaterial.html", classroom_id=classroom_id)
 
     @boundary.route('/manage_materials/<classroom_id>', methods=['GET'])
     def manage_materials(classroom_id):
