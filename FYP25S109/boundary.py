@@ -77,27 +77,15 @@ class HomePage:
 
             print(f"🔍 Looking for video with avatar_id={avatar_id} (type: {type(avatar_id)})")
 
-            file_id_doc = mongo.db.avatar.find_one({"_id": avatar_id}, {"file_id": 1})
-            a_id = file_id_doc['file_id'] if file_id_doc else None
-
-            # ✅ Ensure avatar_id is ObjectId
-            if a_id and not isinstance(a_id, ObjectId):
-                try:
-                    a_id = ObjectId(a_id)
-                except Exception as e:
-                    print(f"❌ Invalid avatar file_id ObjectId: {e}")
-                    a_id = None
-
-            print(f"🔍 Looking for video with file_id={a_id} (type: {type(a_id)})")
-            # Lookup published video linked to this avatar
             video = mongo.db.generated_videos.find_one({
-                "avatar_id": a_id,
+                "avatar_id": avatar_id,
                 "is_published": True
-            },{})
+            }, sort=[("published_at", -1)])
+
 
             if video:
                 print(f"✅ Found video for {avatar_data['avatarname']}: {video.get('_id')}")
-                avatar_data["video_id"] = video.get("_id")
+                avatar_data["video_id"] = video.get("video_id")
                 print(f"Video ID: {avatar_data['video_id']}")
             else:
                 print(f"❌ No video found for avatar {avatar_data['avatarname']} with ID {avatar_id}")
