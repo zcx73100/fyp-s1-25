@@ -264,17 +264,25 @@ class AvatarVideoBoundary:
             print(f"Error streaming audio {audio_id}: {str(e)}")
             return jsonify(success=False, error=f"Audio not found: {str(e)}"), 404
     
+
+
     @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["POST"])
     def generate_video(avatar_id, audio_id):
         username = session.get("username")
         if not username:
             return jsonify({"success": False, "error": "Login required"}), 401
 
+        try:
+            avatar_oid = ObjectId(avatar_id)
+            audio_oid = ObjectId(audio_id)
+        except InvalidId as e:
+            return jsonify({"success": False, "error": f"Invalid ObjectId: {str(e)}"}), 400
+
         text = request.form.get("text", "").strip()
         video_title = request.form.get("video_title", "Untitled")
         task_id = str(uuid.uuid4())
 
-        avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+        avatar_doc = mongo.db.avatar.find_one({"_id": avatar_oid})
         if not avatar_doc:
             return jsonify({"success": False, "error": "Avatar not found"}), 404
 
@@ -285,7 +293,7 @@ class AvatarVideoBoundary:
 
                 fs = get_fs()
                 image_file = fs.get(ObjectId(avatar_doc["file_id"]))
-                audio_file = fs.get(ObjectId(audio_id))
+                audio_file = fs.get(audio_oid)
 
                 files = {
                     "image_file": (image_file.filename, image_file.read(), image_file.content_type or "image/png"),
@@ -317,12 +325,11 @@ class AvatarVideoBoundary:
 
                 fs_id = fs.put(video_stream, filename=f"{video_title}.mp4", content_type="video/mp4")
 
-                # Store in tempvideo
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
-                    "avatar_id": ObjectId(avatar_id),
-                    "audio_id": ObjectId(audio_id),
+                    "avatar_id": avatar_oid,
+                    "audio_id": audio_oid,
                     "video_id": fs_id,
                     "title": video_title,
                     "created_at": datetime.utcnow(),
@@ -330,23 +337,25 @@ class AvatarVideoBoundary:
                 })
 
             except Exception as e:
+                print(f"[Background Error] {e}")
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
-                    "avatar_id": ObjectId(avatar_id),
-                    "audio_id": ObjectId(audio_id),
+                    "avatar_id": avatar_oid,
+                    "audio_id": audio_oid,
                     "error": str(e),
                     "created_at": datetime.utcnow()
                 })
 
-        from threading import Thread
-        Thread(target=background_video_generation).start()
+        threading.Thread(target=background_video_generation).start()
 
         return jsonify({
             "success": True,
             "message": "✅ Video generation started.",
-            "task_id": task_id
+            "task_id": task_id,
+            "video_id": None  # for consistency; may be added post-generation
         })
+
 
     @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
     def cleanup_old_temp_videos():
@@ -356,6 +365,22 @@ class AvatarVideoBoundary:
             "created_at": {"$lt": cutoff}
         })
         return jsonify(success=True, deleted_count=result.deleted_count)
+    
+    @boundary.route("/stream_avatar/<avatar_id>")
+    def stream_avatar(avatar_id):
+        try:
+            avatar = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+            if not avatar:
+                return "Avatar not found", 404
+
+            fs = get_fs()  # ✅ define fs before using it
+            file_id = avatar["file_id"]
+            file = fs.get(file_id)
+            return Response(file.read(), mimetype="image/png")
+        except Exception as e:
+            print("❌ Error streaming avatar:", e)
+            return "Error", 500
+
     
     # Generate Video for Chatbot
     boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
@@ -3090,7 +3115,7 @@ class StudentAssignmentBoundary:
         return '.' in filename and \
                filename.rsplit('.', 1)[1].lower() in StudentAssignmentBoundary.ALLOWED_EXTENSIONS
 
-    @boundary.route('/student/view_submission/<assignment_id>', methods=['GET', 'POST'])
+    @boundary.route('/student/view_submission/<assignment_id>/<filename>', methods=['GET', 'POST'])
     def submit_assignment(assignment_id, filename):
         """Handles assignment submission and displays the submission form."""
         try:
@@ -3134,6 +3159,7 @@ class StudentAssignmentBoundary:
             return redirect(url_for('boundary.submit_assignment',
                                     assignment_id=assignment_id,
                                     filename=filename))
+
 
     @boundary.route('/student/download_submission/<file_id>')
     def student_download_submission(file_id):
