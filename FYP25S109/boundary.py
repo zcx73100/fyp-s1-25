@@ -43,7 +43,6 @@ def allowed_file(filename):
 
 # Homepage
 class HomePage:
-    @staticmethod
     @boundary.route('/')
     def home():
         username = session.get("username")
@@ -410,7 +409,7 @@ class AvatarVideoBoundary:
 
         return jsonify(ready=True, video_id=str(result["video_id"]))
 
-    @staticmethod
+    
     @boundary.route("/stream_video/<video_id>")
     def stream_video(video_id):
         try:
@@ -490,7 +489,6 @@ class AvatarVideoBoundary:
             current_app.logger.exception("Error saving generated video")
             return jsonify(success=False, error=str(e)), 500
 
-    @staticmethod
     @boundary.route("/upload_recorded_voice", methods=["POST"])
     def upload_recorded_voice():
         if "audio" not in request.files:
@@ -540,7 +538,6 @@ class AvatarVideoBoundary:
         
         return jsonify(success=True, audio_id=str(audio_id.inserted_id))
 
-    @staticmethod
     @boundary.route('/get_voice_records', methods=['GET'])
     def get_voice_records():
         try:
@@ -562,7 +559,6 @@ class AvatarVideoBoundary:
             print(f"Error fetching voice records: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
 
-    @staticmethod
     @boundary.route("/publish_to_homepage", methods=["POST"])
     def publish_to_homepage():
         try:
@@ -660,8 +656,6 @@ class AvatarVideoBoundary:
             return redirect(url_for('boundary.my_videos'))
 
 
-        
-    @staticmethod
     @boundary.route('/generated_video/<video_id>')
     def serve_generated_video(video_id):
         try:
@@ -691,7 +685,7 @@ class AvatarVideoBoundary:
             return "Video not found", 404
 
     
-    @staticmethod
+
     @boundary.route("/get_voice/<audio_id>")
     def get_voice(audio_id):
         """Stream a specific voice recording from GridFS"""
@@ -749,7 +743,7 @@ class AvatarVideoBoundary:
             print(f"Error streaming voice {audio_id}: {str(e)}")
             return jsonify(success=False, error=f"Voice not found: {str(e)}"), 404
 
-    @staticmethod
+
     @boundary.route("/update_voice_name/<audio_id>", methods=["POST"])
     def update_voice_name(audio_id):
         """Update the name/title of a voice recording"""
@@ -784,7 +778,7 @@ class AvatarVideoBoundary:
             print(f"Error updating voice name {audio_id}: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
 
-    @staticmethod
+
     @boundary.route("/delete_voice/<audio_id>", methods=["DELETE"])
     def delete_voice(audio_id):
         """Delete a voice recording and its metadata"""
@@ -821,8 +815,7 @@ class AvatarVideoBoundary:
             print(f"Error deleting voice {audio_id}: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
 
-    
-    @staticmethod
+
     @boundary.route("/upload_mp3_voice", methods=["POST"])
     def upload_mp3_voice():
         """Handle MP3 file uploads for avatar voices"""
@@ -874,7 +867,6 @@ class AvatarVideoBoundary:
             print(f"Error uploading MP3 voice: {str(e)}")
             return jsonify(success=False, error=str(e)), 500
         
-    @staticmethod
     @boundary.route("/serve_published_video/<file_id>")
     def serve_published_video(file_id):
         try:
@@ -1031,7 +1023,6 @@ class AvatarVideoBoundary:
         )
 
         
-    @staticmethod
     @boundary.route("/search_video", methods=["POST"])
     def search_video():
         search_query = request.form.get("search_query", "").strip()
@@ -1084,7 +1075,6 @@ class AvatarVideoBoundary:
  
 # Log In
 class LoginBoundary:
-    @staticmethod
     @boundary.route('/login', methods=['GET', 'POST'])
     def login():
         if session.get('user_authenticated'):
@@ -1153,7 +1143,6 @@ class LoginBoundary:
 
         return render_template("login.html")
     
-    @staticmethod
     @boundary.route('/select_avatar/<avatar_id>', methods=['POST'])
     def select_avatar(avatar_id):
         print("[DEBUG] Avatar ID from URL:", avatar_id)
@@ -1195,7 +1184,6 @@ def get_profile_pic(file_id):
 
 # Log Out
 class LogoutBoundary:
-    @staticmethod
     @boundary.route('/logout')
     def logout():
         session.clear()
@@ -1204,7 +1192,6 @@ class LogoutBoundary:
 
 # Create Account
 class CreateAccountBoundary:
-    @staticmethod
     @boundary.route('/createAccount', methods=['GET', 'POST'])
     def sign_up():
         if request.method == 'POST':
@@ -1303,7 +1290,6 @@ class CreateAccountBoundary:
 
 # Edit Account Details
 class UpdateAccountBoundary:
-    @staticmethod
     @boundary.route('/update_account_detail', methods=['GET', 'POST'])
     def update_account_detail():
         if 'username' not in session:
@@ -1364,7 +1350,6 @@ class UpdateAccountBoundary:
 
 # Change Avatar Assistant 
 class ChangeAssistantBoundary:
-    @staticmethod
     @boundary.route('/change_assistant', methods=['GET', 'POST'])
     def change_assistant():
         if 'username' not in session:
@@ -1411,7 +1396,6 @@ class ChangeAssistantBoundary:
 
         return render_template("changeAssistant.html", avatars=avatars, user_info=user_info)
 
-    @staticmethod
     @boundary.route('/set_first_time_login_false', methods=['POST'])
     def set_first_time_login_false():   
         if 'username' not in session:
@@ -1439,7 +1423,6 @@ class ChangeAssistantBoundary:
 
 # Update Password
 class UpdatePasswordBoundary:
-    @staticmethod
     @boundary.route('/update_password', methods=['GET', 'POST'])
     def update_password():
         if 'username' not in session:
@@ -1489,7 +1472,6 @@ class UpdatePasswordBoundary:
 
 # Reset Password
 class ResetPasswordBoundary:
-    @staticmethod
     @boundary.route('/resetPassword', methods=['GET', 'POST'])
     def reset_password():
         if request.method == 'POST':
@@ -1507,7 +1489,6 @@ class ResetPasswordBoundary:
 
 # Search     
 class SearchBoundary:
-    @staticmethod
     @boundary.route('/search', methods=['GET'])
     def search():
         search_query = request.args.get('query', '').strip()
@@ -1558,7 +1539,6 @@ class SearchBoundary:
 # -------------------------------------------------------------ADMIN-----------------------------------------------
 # Admin Confirm Teacher
 class ConfirmTeacherBoundary:
-    @staticmethod
     @boundary.route('/confirmTeacher/', methods=['GET', 'POST'])
     def confirm_teacher_page():
         if session.get('role') != "Admin":
@@ -1572,7 +1552,6 @@ class ConfirmTeacherBoundary:
         ))
         return render_template("confirmTeacher.html", users=users)
 
-    @staticmethod
     @boundary.route('/confirmTeacher/<username>', methods=['POST'])
     def confirm_teacher(username):
         if session.get('role') != "Admin":
@@ -1600,11 +1579,9 @@ class UploadTutorialBoundary:
     UPLOAD_FOLDER_VIDEO = 'FYP25S109/static/uploads/videos/'
     ALLOWED_EXTENSIONS = {'mp4', 'mov', 'avi', 'mkv'}
 
-    @staticmethod
     def allowed_file(filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in UploadTutorialBoundary.ALLOWED_EXTENSIONS
 
-    @staticmethod
     @boundary.route('/uploadTutorial', methods=['GET', 'POST'])
     def upload_tutorial():
         if 'username' not in session:
@@ -1673,7 +1650,6 @@ class ViewUploadedVideosBoundary:
             return "Video not found", 404
         
         
-    @staticmethod
     @boundary.route('/uploadedVideos', methods=['GET'])
     def view_uploaded_videos():
         if 'username' not in session:
@@ -1688,7 +1664,6 @@ class ViewUploadedVideosBoundary:
 
 # View Uploaded Videos (Single Video)
 class ViewSingleTutorialBoundary:
-    @staticmethod
     @boundary.route('/viewTutorial/<video_name>', methods=['GET'])
     def view_tutorial(video_name):
         video = mongo.db.tutorialvideo.find_one({"video_name": video_name})
@@ -1699,7 +1674,6 @@ class ViewSingleTutorialBoundary:
 
 #Delete Video
 class DeleteUploadedVideosBoundary:
-    @staticmethod
     @boundary.route('/deleteVideo/<video_name>', methods=['POST'])
     def delete_video(video_name):
         if 'username' not in session:
@@ -1718,7 +1692,6 @@ class DeleteUploadedVideosBoundary:
 
 # Manage Avatar
 class ManageAvatarBoundary:
-    @staticmethod
     @boundary.route('/manage_avatars')
     def manage_avatars():
         if 'username' not in session:
@@ -1740,7 +1713,6 @@ class ManageAvatarBoundary:
 class AddAvatarBoundary:
     UPLOAD_FOLDER_AVATAR = 'FYP25S109/static/uploads/avatar/'
 
-    @staticmethod
     @boundary.route('/create_avatar', methods=['GET', 'POST'])
     def create_avatar():
         if 'username' not in session:
@@ -1769,7 +1741,6 @@ class AddAvatarBoundary:
 
 # Delete Avatar    
 class DeleteAvatarBoundary:
-    @staticmethod
     @boundary.route('/admin_delete_avatar/<avatar_id>', methods=['POST'])
     def delete_avatar(avatar_id):
         if 'username' not in session:
@@ -1787,7 +1758,6 @@ class DeleteAvatarBoundary:
     
 # Admin Manage User
 class ManageUserBoundary:
-    @staticmethod
     @boundary.route('/admin/manageUsers', methods=['GET'])
     def manage_users():
         # Ensure only admins can access this page
@@ -1799,7 +1769,6 @@ class ManageUserBoundary:
         users = list(mongo.db.useraccount.find({}, {"_id": 0, "username": 1, "email": 1, "role": 1, "status": 1}))
         return render_template("manageUsers.html", users=users)
 
-    @staticmethod
     @boundary.route('/admin/searchUser', methods=['GET'])
     def search_user():
         if 'role' not in session or session.get('role') != 'Admin':
@@ -1811,7 +1780,6 @@ class ManageUserBoundary:
         
         return render_template("manageUsers.html", users=users)
 
-    @staticmethod
     @boundary.route('/admin/suspendUser/<username>', methods=['POST'])
     def suspend_user(username):
         if 'role' not in session or session.get('role') != 'Admin':
@@ -1831,7 +1799,6 @@ class ManageUserBoundary:
         return redirect(url_for('boundary.manage_users'))
 
 # Delete User 
-    @staticmethod
     @boundary.route('/admin/deleteUser/<username>', methods=['POST'])
     def delete_user(username):
         if 'role' not in session or session.get('role') != 'Admin':
@@ -1870,7 +1837,6 @@ class ManageUserBoundary:
 
 
 # Reactivate User
-    @staticmethod
     @boundary.route('/admin/activateUser/<username>', methods=['POST'])
     def activate_user(username):
         if 'role' not in session or session.get('role') != 'Admin':
@@ -1892,7 +1858,6 @@ class ManageUserBoundary:
 # -------------------------------------------------------------TEACHER-----------------------------------------------
 # Teacher manage classrooms
 class TeacherManageClassroomsBoundary:
-    @staticmethod
     @boundary.route('/teacher/manageClassrooms', methods=['GET'])
     def manage_classrooms():
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -1904,7 +1869,6 @@ class TeacherManageClassroomsBoundary:
 
 # Add Classroom
 class TeacherAddClassroomBoundary:
-    @staticmethod
     @boundary.route('/teacher/addClassroom', methods=['GET', 'POST'])
     def add_classroom():
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -1934,7 +1898,6 @@ class TeacherAddClassroomBoundary:
 
 # View Classroom
 class ViewClassRoomBoundary:
-    @staticmethod
     @boundary.route('/viewClassroom/<classroom_id>', methods=['GET', 'POST'])
     def view_classroom(classroom_id):
         if 'role' not in session or session.get('role') not in ['Teacher', 'Student']:
@@ -1990,7 +1953,6 @@ class ViewClassRoomBoundary:
 
 # Delete Classroom
 class TeacherDeleteClassroomBoundary:
-    @staticmethod
     @boundary.route('/teacher/deleteClassroom/<classroom_id>', methods=['POST'])
     def delete_classroom(classroom_id):
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -2008,7 +1970,6 @@ class TeacherDeleteClassroomBoundary:
 
 # Update classroom
 class TeacherUpdateClassroomBoundary:
-    @staticmethod
     @boundary.route('/teacher/updateClassroom/<classroom_id>', methods=['GET', 'POST'])
     def update_classroom(classroom_id):
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -2042,7 +2003,6 @@ class TeacherUpdateClassroomBoundary:
 
 # Search Classroom
 class TeacherSearchClassroomBoundary:
-    @staticmethod
     @boundary.route('/teacher/searchClassroom', methods=['GET', 'POST'])
     def search_classroom():
         query = request.args.get('query', '').strip() if request.method == 'GET' else request.form.get('query', '').strip()
@@ -2052,7 +2012,6 @@ class TeacherSearchClassroomBoundary:
 
 # Manage Student
 class TeacherManageStudentsBoundary:
-    @staticmethod
     @boundary.route('/teacher/manageStudents/<classroom_id>', methods=['GET', 'POST'])
     def manage_students(classroom_id):
         # Retrieve classroom document using classroom_id
@@ -2133,7 +2092,7 @@ class TeacherManageStudentsBoundary:
 
         return redirect(url_for('boundary.manage_students', classroom_id=classroom_id))
 
-    @staticmethod
+    
     @boundary.route('/teacher/suspendStudent/<classroom_id>', methods=['POST'])
     def suspend_student(classroom_id):
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -2151,7 +2110,6 @@ class TeacherManageStudentsBoundary:
         flash(result['message'], category='success' if result['success'] else 'error')
         return redirect(url_for('boundary.manage_students', classroom_id=classroom_id))
 
-    @staticmethod
     @boundary.route('/teacher/unsuspendStudent/<classroom_id>', methods=['POST'])
     def unsuspend_student(classroom_id):
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -2169,7 +2127,6 @@ class TeacherManageStudentsBoundary:
         flash(result['message'], category='success' if result['success'] else 'error')
         return redirect(url_for('boundary.manage_students', classroom_id=classroom_id))
 
-    @staticmethod
     @boundary.route('/teacher/searchStudent/<classroom_id>', methods=['GET'])
     def search_student(classroom_id):
         query = request.args.get('query', '').strip()  # Get query from request parameters
@@ -2294,7 +2251,6 @@ class TeacherManageMaterialBoundary:
         materials = mongo.db.materials.find(q)
         return render_template('manageMaterials.html', materials=materials, classroom_id=classroom_id)
 
-    @staticmethod
     @boundary.route('/teacher/download_material/<material_id>')
     def download_material(material_id):
         material = mongo.db.materials.find_one({"_id": ObjectId(material_id)})
@@ -2334,7 +2290,6 @@ class TeacherViewQuizBoundary:
 
 # View User Detail            
 class ViewUserDetailsBoundary:
-    @staticmethod
     @boundary.route('/userDetails/<username>', methods=['GET'])
     def view_user_details(username):
         if 'role' not in session or session.get('role') != 'Teacher':
@@ -2465,7 +2420,6 @@ class TeacherAssignmentBoundary:
             return jsonify({"success": False, "error": str(e)}), 500
 
     
-    @staticmethod
     @boundary.route('/teacher/manage_assignments/<classroom_id>', methods=['GET', 'POST'])
     def manage_assignments(classroom_id):
         """Retrieve all assignments and allow searching."""
@@ -2486,7 +2440,7 @@ class TeacherAssignmentBoundary:
 
         return render_template("manageAssignments.html", assignments=assignments, classroom_id=classroom_id)
 
-    @staticmethod
+    
     @boundary.route('/teacher/download_assignment/<assignment_id>')
     def download_assignment(assignment_id):
         assignment = Assignment.get_assignment(assignment_id)
@@ -2533,7 +2487,6 @@ class TeacherAssignmentBoundary:
 
 
 
-    @staticmethod
     @boundary.route('/grade_assignment/<classroom_id>/<assignment_id>/<student_username>/<submission_id>', methods=['POST'])
     def grade_assignment(classroom_id, assignment_id, student_username, submission_id):
         """Assigns grades and feedback to student submissions."""
@@ -2563,7 +2516,7 @@ class TeacherAssignmentBoundary:
 
 
 
-    @staticmethod
+    
     @boundary.route('/teacher/delete_assignment/<classroom_id>/<assignment_id>')
     def delete_assignment(classroom_id, assignment_id):
         """Deletes an assignment and its associated file."""
@@ -3079,7 +3032,7 @@ class ViewAssignmentBoundary:
 
 #This function facilitates student to view the list of classrooms he/she is enrolled in.
 class StudentViewClassroomsBoundary:
-    @staticmethod
+    
     @boundary.route('/student/viewClassrooms', methods=['GET'])
     def get_list_of_classrooms():
         if 'role' not in session or session.get('role') != 'Student':
@@ -3093,7 +3046,7 @@ class StudentViewClassroomsBoundary:
 class StudentAssignmentBoundary:
     ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
 
-    @staticmethod
+    
     def allowed_file(filename):
         """
         Checks if the file has an allowed extension.
@@ -3304,14 +3257,12 @@ class StudentAssignmentBoundary:
       
 # Access Forum
 class AccessForumBoundary:
-    @staticmethod
     @boundary.route('/forum/<classroom_id>', methods=['GET','POST'])
     def access_forum(classroom_id):
         return render_template("forum.html", classroom_id=classroom_id, discussion_rooms=RetrieveDiscussionRoomController.get_all_discussion_rooms_by_classroom_id(classroom_id))
 
 # Discussion Room
 class DiscussionRoomBoundary:
-    @staticmethod
     @boundary.route('/forum/<classroom_id>/create', methods=['POST'])
     def create_discussion_room(classroom_id):
         discussion_room_name = request.form.get('discussion_room_name')
@@ -3326,7 +3277,7 @@ class DiscussionRoomBoundary:
         # Redirecting back to the forum page
         return redirect(url_for('boundary.access_forum', classroom_id=classroom_id))
 
-    @staticmethod
+    
     @boundary.route('/forum/<classroom_id>/<discussion_room_id>/delete', methods=['GET', 'POST'])
     def delete_discussion_room(classroom_id, discussion_room_id):
         if DeleteDiscussionRoomController.delete_discussion_room(discussion_room_id):
@@ -3336,20 +3287,20 @@ class DiscussionRoomBoundary:
 
         return redirect(url_for('boundary.access_forum', classroom_id=classroom_id))
 
-    @staticmethod
+    
     @boundary.route('/forum/<classroom_id>', methods=['GET'])
     def view_discussion_room_list(classroom_id):
         rooms = RetrieveDiscussionRoomController.get_all_discussion_rooms_by_classroom_id(classroom_id)
         return render_template('forum.html', discussion_rooms=rooms, classroom_id=classroom_id)
 
-    @staticmethod
+    
     @boundary.route('/forum/search', methods=['GET'])
     def search_discussion_room():
         search_query = request.args.get('query')
         rooms = SearchDiscussionRoomController.search_discussion_room(search_query)
         return render_template('forum.html', discussion_rooms=rooms)
 
-    @staticmethod
+    
     @boundary.route('/discussion_room/<discussion_room_id>', methods=['GET', 'POST'])
     def access_room(discussion_room_id):
         # Fetch messages using the controller
@@ -3364,7 +3315,7 @@ class DiscussionRoomBoundary:
         # Render the template with messages and room data
         return render_template('discussionRoom.html', room=room, messages=messages, discussion_room_id=discussion_room_id)
 
-    @staticmethod
+    
     @boundary.route('/discussion_room/update/<discussion_room_id>', methods=['GET', 'POST'])
     def update_discussion_room(discussion_room_id):
 
@@ -3400,7 +3351,7 @@ class DiscussionRoomBoundary:
 
 # Message 
 class MessageBoundary:
-    @staticmethod
+    
     @boundary.route('/discussion_room/<discussion_room_id>/message', methods=['POST'])
     def send_message(discussion_room_id):
         message_content = request.form.get('message_content')
@@ -3412,7 +3363,7 @@ class MessageBoundary:
         return redirect(url_for('boundary.access_room', discussion_room_id=discussion_room_id))
 
     
-    @staticmethod
+    
     @boundary.route('/message/<message_id>/delete', methods=['POST'])
     def unsend_message(message_id):
         if DeleteMessageController.delete_message(message_id):
@@ -3421,7 +3372,7 @@ class MessageBoundary:
             flash("Failed to delete message.", "danger")
         return redirect(request.referrer)
     
-    @staticmethod
+    
     @boundary.route('/message/<message_id>/update', methods=['POST'])
     def edit_message(message_id):
         message_content = request.form.get('message_content')
