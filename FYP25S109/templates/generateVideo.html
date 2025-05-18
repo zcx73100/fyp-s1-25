@@ -48,6 +48,7 @@
 <audio controls="" id="tts-audio"></audio>
 </div>
 <input id="tts-audio-id" name="audio_id" type="hidden"/>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const elements = {
@@ -230,9 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-</script>
-
-Generate Voice using Text</h5>
+<h5>Generate Voice using Text</h5>
 </div>
 <div class="card-body">
 <form id="gttsForm">
@@ -246,6 +245,7 @@ Generate Voice using Text</h5>
 <div class="mt-3 alert" id="gttsStatus" style="display: none;"></div>
 </div>
 </div>
+
 <!-- Voice Recording Section -->
 <div class="card mb-4 shadow-sm">
 <div class="card-header bg-danger text-white">
@@ -820,7 +820,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const avatar = document.querySelector("input[name='avatar_id']:checked");
     const audioChoice = document.querySelector("input[name='audio_choice']:checked");
     const videoTitle = document.getElementById('videoTitle').value.trim();
-
+    const avatarId = avatar.value;  // ✅ Now it's safe
+    const audioId = audioChoice.value;
+    
     if (!audioChoice) {
       showNotification('Please select or record an audio first!', 'danger');
       return;
@@ -870,9 +872,6 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.progressBar.style.width = '50%';
       elements.progressPercent.textContent = '50%';
 
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save video record');
-      }
 
       elements.progressBar.style.width = '100%';
       elements.progressPercent.textContent = '100%';
@@ -1029,7 +1028,7 @@ document.addEventListener("DOMContentLoaded", () => {
       status.className = "mt-3 alert alert-info";
       status.style.display = "block";
 
-      const response = await fetch("/generate_gtts_voice", {
+      const response = await fetch("/generate_voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text })
