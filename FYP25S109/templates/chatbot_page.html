@@ -1041,7 +1041,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.selectedTTSVoice = voiceSpan.dataset.voice;
   
     // And pull the avatar ID directly from your single user_info context
-    const ASSISTANT_AVATAR_ID = "{{ user_info.assistant.avatar_id }}";
+    window.ASSISTANT_AVATAR_ID = "{{ user_info.assistant.avatar_id }}";
   
     // Your existing function — just swap in ASSISTANT_AVATAR_ID here:
     async function triggerSadTalkerVideo(audioId) {
@@ -1073,6 +1073,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("❌ JS Error during SadTalker video generation:", err);
       }
     }
+  </script>
+  <script>
+    window.ASSISTANT_AVATAR_ID = "{{ user_info.assistant.avatar_id }}";
+    window.selectedTTSVoice    = "{{ user_info.assistant.tts_voice }}";
   </script>
     <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
 
