@@ -73,6 +73,8 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => note.style.display = 'none', 5000);
     }
 
+    const avatarId = avatar.value;
+    const audioId = audioChoice.value;
     async function pollForVideo(taskId, avatarId, audioId) {
         if (!elements) {
             console.error('DOM not ready: elements undefined');
@@ -229,6 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 </script>
+
 Generate Voice using Text</h5>
 </div>
 <div class="card-body">
@@ -856,7 +859,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
       if (data.success) {
         const taskId = data.task_id;
-        pollForVideo(taskId);
+        pollForVideo(taskId, avatarId, audioId);
       }
 
       if (!data.success) {
