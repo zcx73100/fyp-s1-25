@@ -1,140 +1,188 @@
-// Toggle the chat window open/closed
-function toggleChat() {
-  const chatBox   = document.getElementById('chat-box');
-  const container = document.getElementById('chatbot-container');
-  const isOpen    = chatBox.style.display === 'flex';
+// static/chatbot.js
 
-  if (isOpen) {
-    // Minimize
-    chatBox.style.display = 'none';
-    container.classList.remove('expanded');
-    container.style.width  = '200px';
-    container.style.height = 'auto';
-  } else {
-    // Open
-    chatBox.style.display = 'flex';
-    container.style.width  = container.classList.contains('expanded') ? '450px' : '300px';
-    container.style.height = container.classList.contains('expanded') ? '600px' : '400px';
+document.addEventListener("DOMContentLoaded", () => {
+  // —— DOM references ——  
+  const messageInput      = document.getElementById("message-input");
+  const chatForm          = document.getElementById("chat-form");
+  const messagesContainer = document.getElementById("messages-container");
+  const chatList          = document.getElementById("chat-list");
+  const newChatBtn        = document.getElementById("new-chat-btn");
+  const deleteChatBtn     = document.getElementById("delete-chat-btn");
+  const chatTitle         = document.getElementById("chat-title");
+  const chatActions       = document.getElementById("chat-actions");
+  const welcomeMessage    = document.getElementById("welcome-message");
+  const selectedVoiceSpan = document.getElementById("selected-voice");
+  
+  // —— Config & state ——  
+  const ASSISTANT_AVATAR_ID = "{{ user_info.assistant.avatar_id }}";
+  window.selectedTTSVoice   = selectedVoiceSpan?.dataset.voice || "female_en";
+  let currentChatId = null, isLoading = false;
+
+  // —— Helpers ——  
+  function scrollToBottom() {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
-}
 
-// Expand/collapse between two sizes
-function toggleSize() {
-  const container = document.getElementById('chatbot-container');
-  const chatBox   = document.getElementById('chat-box');
-  const expandBtn = document.getElementById('expand-button');
+  function appendMessage(role, text) {
+    const row    = document.createElement("div");
+    row.className = `message-row ${role}`;
 
-  container.classList.toggle('expanded');
-  const isExpanded = container.classList.contains('expanded');
+    const bubble = document.createElement("div");
+    bubble.className = `message-${role}`;
+    bubble.innerHTML = text;
+    row.appendChild(bubble);
 
-  container.style.width  = isExpanded ? '450px' : '300px';
-  container.style.height = isExpanded ? '600px' : '400px';
-  expandBtn.innerText    = isExpanded ? '🗕 Collapse' : '🗖 Expand';
+    messagesContainer.appendChild(row);
+    scrollToBottom();
 
-  if (chatBox.style.display === 'none') {
-    chatBox.style.display = 'flex';
-  }
-}
-
-// Create a chat bubble element
-function createChatBubble(role, text) {
-  const bubble = document.createElement('div');
-  bubble.className = `chat-bubble ${role}-bubble`;
-  bubble.innerHTML = text;
-  return bubble;
-}
-
-let typingInterval;
-
-// Handle Enter in the chat input
-async function sendOnEnter(e) {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-
-    const input    = e.target;
-    const message  = input.value.trim();
-    if (!message) return;
-
-    input.value = "";
-
-    const chatBox = document.getElementById("chat-box");
-    const userBubble = createChatBubble("user", message);
-    chatBox.appendChild(userBubble);
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    try {
-      // 1. Send the message to your API
-      const chatId = input.getAttribute("data-chat-id");
-      const res = await fetch(`/api/chat/${chatId}/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Chat failed");
-
-      // 2. Render the bot’s reply
-      const reply = data.reply;
-      const botBubble = createChatBubble("bot", reply);
-      chatBox.appendChild(botBubble);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      // 3. Stash the reply for TTS
-      document.getElementById("hidden-reply-text").value = reply;
-
-      // 4. Build FormData for voice generation
-      const formData = new FormData();
-      formData.append("text", reply);
-
-      const selectedVoice = document.querySelector("#voice-selector").value || "female_en";
-      const lang   = selectedVoice.includes("jp")     ? "ja"     : "en";
-      const gender = selectedVoice.includes("female") ? "female" : "male";
-      formData.append("lang", lang);
-      formData.append("gender", gender);
-
-      // 5. Call your form-based TTS endpoint
-      const ttsRes  = await fetch("/generate_voice_form", {
-        method: "POST",
-        body: formData
-      });
-      const ttsData = await ttsRes.json();
-      if (ttsRes.ok && ttsData.audio_id) {
-        console.log("🎤 Voice generated, audioId:", ttsData.audio_id);
-        // 6. Kick off the SadTalker video build
-        await triggerSadTalkerVideo(ttsData.audio_id);
-      } else {
-        console.error("❌ TTS failed:", ttsData.error || "no audio_id");
-        showNotification(ttsData.error || "Voice generation failed", "danger");
-      }
-
-    } catch (err) {
-      console.error("❌ Chatbot error:", err);
-      showNotification(err.message || "Something went wrong", "danger");
+    if (role === "bot") {
+      // fire-and-forget video generation
+      autoGenerateVideo(text, bubble);
     }
   }
-}
 
-// Utility to show notifications (implement UI as you like)
-function showNotification(msg, type) {
-  // e.g. insert into a toast container, styled by `type`
-  console.warn(`[${type.toUpperCase()}] ${msg}`);
-}
+  async function autoGenerateVideo(text, bubbleContainer) {
+    try {
+      // 1) Generate TTS
+      const fd = new FormData();
+      fd.append("text", text);
+      fd.append("voice", window.selectedTTSVoice);
+      const ttsRes = await fetch("/generate_voice_form", { method: "POST", body: fd });
+      const { audio_id } = await ttsRes.json();
+      if (!audio_id) throw new Error("TTS failed");
 
-// Stub for SadTalker video trigger (fill in your logic)
-async function triggerSadTalkerVideo(audioId) {
-  // your existing code here
-}
+      // 2) Generate SadTalker video
+      const vidRes = await fetch(
+        `/generate_video_for_chatbot/${ASSISTANT_AVATAR_ID}/${audio_id}`,
+        { method: "POST" }
+      );
+      const { success, video_url } = await vidRes.json();
+      if (!success || !video_url) throw new Error("Video gen failed");
 
-// Wire up the Enter key handler
-document.getElementById("chat-input")
-        .addEventListener("keydown", sendOnEnter);
+      // 3) Inject the video under the bot bubble
+      const v = document.createElement("video");
+      v.src      = video_url;
+      v.controls = true;
+      v.autoplay = true;
+      v.className= "bot-video mt-2";
+      bubbleContainer.appendChild(v);
+      scrollToBottom();
 
-// (Optional) Generic appendMessage if you need it elsewhere
-function appendMessage(sender, text, role) {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = `chat-bubble ${role === 'user' ? 'user-bubble' : 'bot-bubble'}`;
-  msgDiv.innerHTML = `<strong>${sender}:</strong><br>${text}`;
-  const chat = document.getElementById('chat-messages');
-  chat.appendChild(msgDiv);
-  msgDiv.scrollIntoView();
-}
+    } catch (e) {
+      console.warn("Background video error:", e);
+    }
+  }
+
+  function resetChatUI() {
+    currentChatId = null;
+    chatTitle.textContent = "Select a chat or start a new one";
+    chatActions.classList.add("d-none");
+    welcomeMessage.classList.remove("d-none");
+    messagesContainer.classList.add("d-none");
+    messagesContainer.innerHTML = "";
+    messageInput.disabled = true;
+    chatForm?.querySelector("button")?.setAttribute("disabled", "");
+  }
+
+  async function loadChat(chatId, title) {
+    isLoading = true;
+    currentChatId = chatId;
+
+    chatTitle.textContent = title;
+    chatActions.classList.remove("d-none");
+    welcomeMessage.classList.add("d-none");
+    messagesContainer.classList.remove("d-none");
+    messagesContainer.innerHTML = "";
+
+    messageInput.disabled = false;
+    chatForm?.querySelector("button")?.removeAttribute("disabled");
+
+    try {
+      const res  = await fetch(`/api/chat/${chatId}/messages`);
+      const data = await res.json();
+      data.messages.forEach(m => {
+        appendMessage("user", m.user);
+        appendMessage("bot", m.bot);
+      });
+    } catch {
+      appendMessage("bot", "Error loading chat.");
+    } finally {
+      isLoading = false;
+      scrollToBottom();
+    }
+  }
+
+  // —— Event bindings ——  
+
+  // Send on Enter
+  messageInput?.addEventListener("keydown", async e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const msg = messageInput.value.trim();
+      if (!msg || !currentChatId || isLoading) return;
+      messageInput.value = "";
+      appendMessage("user", msg);
+
+      try {
+        isLoading = true;
+        const res  = await fetch(`/api/chat/${currentChatId}/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: msg })
+        });
+        const { reply } = await res.json();
+        appendMessage("bot", reply);
+      } catch {
+        appendMessage("bot", "Error sending message.");
+      } finally {
+        isLoading = false;
+      }
+    }
+  });
+
+  // New chat
+  newChatBtn?.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/chat/new", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ title: "New Chat" })
+      });
+      const data = await res.json();
+      loadChat(data.chat_id, data.title);
+
+      // update sidebar
+      const item = document.createElement("div");
+      item.className         = "chat-item list-group-item list-group-item-action active";
+      item.dataset.chatId    = data.chat_id;
+      item.dataset.title     = data.title;
+      item.innerHTML         = `<div class="d-flex w-100 justify-content-between">
+                                  <h6 class="mb-1">${data.title}</h6>
+                                  <small>${new Date().toLocaleTimeString()}</small>
+                                </div>
+                                <p class="mb-1 text-truncate">New chat started</p>`;
+      chatList.prepend(item);
+      document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+    } catch {
+      appendMessage("bot", "Failed to create new chat.");
+    }
+  });
+
+  // Delete chat
+  deleteChatBtn?.addEventListener("click", async () => {
+    if (!currentChatId || !confirm("Delete this chat?")) return;
+    await fetch(`/api/chat/${currentChatId}/delete`, { method: "DELETE" });
+    document.querySelector(`.chat-item[data-chat-id="${currentChatId}"]`)?.remove();
+    resetChatUI();
+  });
+
+  // Sidebar load
+  chatList?.addEventListener("click", e => {
+    const item = e.target.closest(".chat-item");
+    if (!item) return;
+    loadChat(item.dataset.chatId, item.dataset.title);
+    document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+  });
+});
