@@ -14,8 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectedVoiceSpan = document.getElementById("selected-voice");
   
   // —— Config & state ——  
-  const ASSISTANT_AVATAR_ID = "{{ user_info.assistant.avatar_id }}";
-  window.selectedTTSVoice   = selectedVoiceSpan?.dataset.voice || "female_en";
+  const ASSISTANT_AVATAR_ID = window.ASSISTANT_AVATAR_ID;
+  window.selectedTTSVoice   = window.selectedTTSVoice  || selectedVoiceSpan?.dataset.voice || "female_en";
   let currentChatId = null, isLoading = false;
 
   // —— Helpers ——  
@@ -118,6 +118,9 @@ document.addEventListener("DOMContentLoaded", () => {
   messageInput?.addEventListener("keydown", async e => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+
+      welcomeMessage.classList.add("d-none");
+      messagesContainer.classList.remove("d-none");
       const msg = messageInput.value.trim();
       if (!msg || !currentChatId || isLoading) return;
       messageInput.value = "";
