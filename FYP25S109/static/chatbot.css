@@ -96,4 +96,52 @@
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.08);
   }
   
+/* Per-message bot avatar next to bubble */
+.message-row.bot {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.bot-avatar-container {
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.bot-avatar-container img.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.message-bot {
+  flex-grow: 1;
+  background-color: #f8f9fa;
+  border-radius: 18px 18px 18px 0;
+  padding: 12px 16px;
+  margin: 0;  /* margin now on row */
+}
+
+/* User bubbles stay unchanged */
+.message-row.user {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.message-user {
+  background-color: #e3f2fd;
+  border-radius: 18px 18px 0 18px;
+  padding: 12px 16px;
+  max-width: 85%;
+}
+
+/* Optional video styling */
+.bot-video {
+  margin-top: 8px;
+  max-width: 300px;
+  border-radius: 8px;
+}
 
