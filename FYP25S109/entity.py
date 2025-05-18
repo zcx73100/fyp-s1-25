@@ -395,7 +395,7 @@ class GenerateVideoEntity:
             )
             tts.write_to_fp(mp3_buffer)
             mp3_buffer.seek(0)
-
+            fs = get_fs()
             audio_id = fs.put(
                 mp3_buffer,
                 filename=f"voice_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.mp3",
