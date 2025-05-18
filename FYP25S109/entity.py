@@ -1,4 +1,4 @@
-from flask import session
+from flask import flash, session, redirect, url_for, request
 from . import mongo
 import os
 import logging
@@ -11,7 +11,6 @@ from io import BytesIO
 from bson import ObjectId
 import pyttsx3
 from gradio_client import Client
-from flask import flash, session, redirect, url_for
 import wave
 import subprocess
 import shutil
@@ -20,6 +19,7 @@ import base64
 import mimetypes
 from gtts import gTTS
 from gridfs import GridFS
+from rembg import remove
 
 
 def get_fs():
@@ -346,80 +346,33 @@ class GenerateVideoEntity:
             return None
 
     def generate_voice(self, lang, gender):
-            try:
-                if not self.text.strip():
-                    raise ValueError("Text input is empty.")
-    
-                # Enhanced voice configuration
-                voice_config = {
-                    "en": {
-                        "male": {"tld": "com.au", "lang": "en", "slow": False, "gender_enforced": True},
-                        "female": {"tld": "com.au", "lang": "en", "slow": False, "gender_enforced": True},
-                        "neutral": {"tld": "co.uk", "lang": "en", "slow": False, "gender_enforced": False}
-                    },
-                    "es": {
-                        "male": {"tld": "com.mx", "lang": "es", "slow": False, "gender_enforced": True},
-                        "female": {"tld": "es", "lang": "es", "slow": False, "gender_enforced": True}
-                    },
-                    "fr": {
-                        "female": {"tld": "fr", "lang": "fr", "slow": False, "gender_enforced": True},
-                        "neutral": {"tld": "fr", "lang": "fr", "slow": False, "gender_enforced": False}
-                    },
-                    "de": {
-                        "neutral": {"tld": "de", "lang": "de", "slow": False, "gender_enforced": False}
-                    },
-                    "it": {
-                        "neutral": {"tld": "it", "lang": "it", "slow": False, "gender_enforced": False}
-                    },
-                    "ja": {
-                        "neutral": {"tld": "co.jp", "lang": "ja", "slow": False, "gender_enforced": False}
-                    },
-                    "ko": {
-                        "neutral": {"tld": "co.kr", "lang": "ko", "slow": False, "gender_enforced": False}
-                    },
-                    "id": {
-                        "neutral": {"tld": "co.id", "lang": "id", "slow": False, "gender_enforced": False}
-                    }
-                }
-    
-                # Get settings for requested language and gender
-                lang_config = voice_config.get(lang)
-                gender_config = lang_config.get(gender)
-                
-                mp3_buffer = BytesIO()
-                tts = gTTS(
-                    text=self.text,
-                    lang=lang,
-                    tld=gender_config["tld"],
-                    slow=gender_config["slow"]
-                )
-                tts.write_to_fp(mp3_buffer)
-                mp3_buffer.seek(0)
-    
-                audio_id = fs.put(
-                    mp3_buffer,
-                    filename=f"voice_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.mp3",
-                    content_type="audio/mpeg"
-                )
-    
-                voice_data = {
-                    "audio_id": audio_id,
-                    "text": self.text,
-                    "lang": lang,
-                    "gender": gender,
-                    "created_at": datetime.now(),
-                    "status": "generated",
-                    "username": session.get("username"),
-                    "source": "chatbot"
-                }
-    
-                mongo.db.voice_records.insert_one(voice_data)
-                return audio_id
-    
-            except Exception as e:
-                print(f"❌ Error generating voice: {e}")
-                return None
+        from gtts import gTTS
+        from bson import ObjectId
+        from datetime import datetime
 
+        fs = get_fs()
+        username = session.get("username", "chatbot")
+        lang = lang or "en"
+        gender = gender or "male"
+
+        text = request.form.get("text", "")
+        if not text:
+            raise ValueError("Text is required for voice generation")
+
+        gtts = gTTS(text=text, lang=lang, tld='co.uk' if gender == 'male' else 'com')
+        audio_binary = BytesIO()
+        gtts.write_to_fp(audio_binary)
+        audio_binary.seek(0)
+
+        file_id = fs.put(audio_binary, filename="chatbot_voice.mp3", content_type="audio/mpeg")
+
+        return mongo.db.audio.insert_one({
+            "username": username,
+            "file_id": file_id,
+            "filename": "chatbot_voice.mp3",
+            "created_at": datetime.utcnow(),
+            "source": "chatbot"
+        }).inserted_id
 
 
     @staticmethod    
@@ -454,66 +407,39 @@ class Avatar:
     def allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
-    def save_image(self):
+    def save_image(self, image_binary, filename):
         try:
-            if not self.image_file:
-                raise ValueError("No file selected for upload.")
+            fs = get_fs()
 
-            filename = secure_filename(self.image_file.filename)
-            if not self.allowed_file(filename):
-                raise ValueError("Invalid image format.")
+            # ✅ Remove background from image
+            image_no_bg = remove(image_binary)
 
-            # Step 1: Load image
-            image_binary = self.image_file.read()
-            image = Image.open(io.BytesIO(image_binary)).convert("RGBA")
+            # ✅ Open the cleaned image
+            image = Image.open(BytesIO(image_no_bg)).convert("RGBA")
 
-            # Step 2: Pad image to square
+            # ✅ Make it square and 512x512 for SadTalker
             width, height = image.size
-            if width != height:
-                delta = abs(width - height)
-                padding = (0, 0, 0, 0)
-                if width > height:
-                    padding = (0, delta // 2, 0, delta - delta // 2)
-                else:
-                    padding = (delta // 2, 0, delta - delta // 2, 0)
-                image = ImageOps.expand(image, padding, fill=(0, 0, 0, 0))
+            new_size = max(width, height)
+            square_image = Image.new("RGBA", (new_size, new_size), (255, 255, 255, 0))
+            square_image.paste(image, ((new_size - width) // 2, (new_size - height) // 2))
 
-            # Step 3: Resize to 512x512
-            try:
-                resample = Image.Resampling.BICUBIC
-            except AttributeError:
-                resample = Image.BICUBIC
-            image = image.resize((512, 512), resample)
+            resized_image = square_image.resize((512, 512))
+            output = BytesIO()
+            resized_image.save(output, format="PNG")
+            output.seek(0)
 
-            # Step 4: Save image to buffer (no rembg)
-            buffer = io.BytesIO()
-            image.save(buffer, format="PNG")
-            buffer.seek(0)
-            image_data = buffer.getvalue()
+            file_id = fs.put(output, filename=filename, content_type="image/png")
 
-            # Step 5: Save to GridFS
-            gridfs_id = get_fs().put(image_data, filename=filename, content_type="image/png")
-
-            # Step 6: Store as base64 preview
-            image_base64 = base64.b64encode(image_data).decode("utf-8")
-
-            # Step 7: Insert into DB
-            avatar_record = {
-                'avatarname': self.avatarname,
-                'username': self.username,
-                'image_data': image_base64,
-                'file_id': gridfs_id,
-                'upload_date': datetime.utcnow()
-            }
-
-            result = mongo.db.avatar.insert_one(avatar_record)
-            logging.info(f"[Avatar] Inserted for user '{self.username}', ID: {result.inserted_id}")
-
-            return {"success": True, "message": "Avatar uploaded successfully."}
-
+            return mongo.db.avatar.insert_one({
+                "username": session["username"],
+                "file_id": file_id,
+                "filename": filename,
+                "created_at": datetime.utcnow()
+            }).inserted_id
         except Exception as e:
-            logging.error(f"[Avatar Upload Error] {str(e)}")
-            return {"success": False, "message": f"Failed to upload avatar: {str(e)}"}
+            print("❌ Error saving avatar:", e)
+            raise
+
 
 
     def add_avatar(self, avatarname, username, image_data, file_path):
