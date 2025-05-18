@@ -162,6 +162,8 @@
     <!-- Hidden Inputs -->
     <input type="hidden" id="videoIdInput"/>
     <input type="hidden" id="classroomIdInput" value="{{ classroom_id }}"/>
+    <input type="hidden" id="tts-audio-id" value="">
+
   </div>
 
   <!-- === Edit Voice Modal === -->
@@ -259,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Refresh saved voices
   async function refreshSavedVoices(){
     try {
-      let res=await fetch('/list_voices'), d=await res.json();
+      let res=await fetch('/get_voice_records'), d=await res.json();
       if(d.success){
         savedList.innerHTML = d.records.map((r,i)=>`
           <label class="list-group-item d-flex justify-content-between align-items-center">
@@ -306,7 +308,8 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       let res=await fetch('/generate_voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})}),
           d=await res.json();
-      if(d.success){ ttsAudio.src=d.url; ttsPreview.style.display='block'; audioHidden.value=d.audio_id; await refreshSavedVoices(); }
+      if(d.success){ const streamUrl = `/stream_audio/${d.audio_id}`;
+        ttsAudio.src = streamUrl; ttsPreview.style.display='block'; audioHidden.value=d.audio_id; await refreshSavedVoices(); }
       else throw new Error(d.error);
     } catch(err){showNotification(err.message,'danger');}
   });
