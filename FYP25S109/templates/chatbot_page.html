@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<span id="selected-voice" data-voice="{{ user.assistant.tts_voice }}"></span>
+<span id="selected-voice" data-voice="{{ user_info.assistant.tts_voice }}"></span>
 
 <style>
     #sidebar-wrapper {
@@ -279,6 +279,7 @@
     };
 </script>
 
+  
 <div class="container mt-4">
     <div class="d-flex position-relative" id="chat-container">
         <!-- Sidebar -->
@@ -343,7 +344,7 @@
                 <!-- Avatar Still Image -->
                 <img
                 id="assistant-avatar-placeholder"
-                src="{{ url_for('boundary.stream_avatar', avatar_id=user_info.assistant.avatar_id) }}"
+                src="{{ url_for('boundary.stream_avatar', avatar_id=user_info.assistant.avatar_id) }}"                
                 alt="Assistant Avatar"
                 class="rounded shadow mb-3"
                 style="max-width: 300px;"
@@ -1034,60 +1035,45 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- Load MathJax 3 -->
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-<!-- Pass assistant avatar and voice to JS -->
 <script>
-  const ASSISTANT_AVATAR_ID = "{{ user.assistant.avatar_id }}";
-  const ASSISTANT_TTS_VOICE = "{{ user.assistant.tts_voice }}";
-</script>
-
-<script>
-  // Inject the selected TTS voice from MongoDB
-  window.selectedTTSVoice = "{{ user_info.assistant.tts_voice if user_info and user_info.assistant and user_info.assistant.tts_voice else '' }}";
-</script>
-
-<form id="voice-form" method="POST" action="/generate_voice_form">
-  <input type="hidden" name="text" id="hidden-reply-text">
-</form>
-
-<script>
-  async function triggerSadTalkerVideo(audioId) {
-    console.log("🎯 triggerSadTalkerVideo called with audioId:", audioId);
-    const avatarId = "{{ user_info.assistant.avatar_id if user_info and user_info.assistant and user_info.assistant.avatar_id else '' }}";
-    if (!avatarId) {
-      console.error("❌ Avatar ID missing from session or template context.");
-      return;
-    }
-
-    try {
-      const videoRes = await fetch(`/generate_video_for_chatbot/${avatarId}/${audioId}`, {
-        method: "POST"
-      });
-
-      const videoData = await videoRes.json();
-      if (!videoData.success || !videoData.video_url) {
-        console.error("❌ Video generation failed:", videoData.error);
+    // Read voice from the <span id="selected-voice"> you already rendered
+    const voiceSpan = document.getElementById('selected-voice');
+    window.selectedTTSVoice = voiceSpan.dataset.voice;
+  
+    // And pull the avatar ID directly from your single user_info context
+    const ASSISTANT_AVATAR_ID = "{{ user_info.assistant.avatar_id }}";
+  
+    // Your existing function — just swap in ASSISTANT_AVATAR_ID here:
+    async function triggerSadTalkerVideo(audioId) {
+      console.log("🎯 triggerSadTalkerVideo called with audioId:", audioId);
+      const avatarId = ASSISTANT_AVATAR_ID;
+      if (!avatarId) {
+        console.error("❌ Avatar ID missing from session or template context.");
         return;
       }
-
-      // ✅ Display video
+      try {
+        const res = await fetch(`/generate_video_for_chatbot/${avatarId}/${audioId}`, {
+          method: "POST"
+        });
+        const data = await res.json();
+        if (!data.success || !data.video_url) {
+          console.error("❌ Video generation failed:", data.error);
+          return;
+        }
+        // Display video (clearing out the still‐image first)
         const videoContainer = document.getElementById("video-output-area");
-        videoContainer.innerHTML = "";  // This clears the avatar image too
-
-      const videoEl = document.createElement("video");
-        videoEl.src = videoData.video_url;
+        videoContainer.innerHTML = "";
+        const videoEl = document.createElement("video");
+        videoEl.src = data.video_url;
         videoEl.controls = true;
         videoEl.autoplay = true;
         videoEl.className = "rounded shadow mb-3";
-        videoEl.style.width = "300px";
-        videoEl.style.height = "auto";
-        videoEl.style.objectFit = "cover";
         videoContainer.appendChild(videoEl);
-        
-    } catch (err) {
-      console.error("❌ JS Error during SadTalker video generation:", err);
+      } catch (err) {
+        console.error("❌ JS Error during SadTalker video generation:", err);
+      }
     }
-  }
-</script>
+  </script>
 
 
 {% endblock %}
