@@ -19,7 +19,7 @@ import base64
 import mimetypes
 from gtts import gTTS
 from gridfs import GridFS
-from rembg import remove
+
 
 
 def get_fs():
@@ -409,6 +409,7 @@ class Avatar:
 
     def save_image(self, image_binary, filename):
         try:
+            from rembg import remove
             fs = get_fs()
 
             # ✅ Remove background from image
