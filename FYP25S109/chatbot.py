@@ -36,9 +36,8 @@ class ChatbotBoundary:
 
         return render_template(
             "chatbot_page.html",
-            user=user_info,
-            chatbot_chats=chatbot_chats,
-            assistant_avatar=assistant_avatar
+            user_info=user_info,
+            chatbot_chats=chatbot_chats
         )
     
     @chatbot.route("/chatbot/process", methods=["POST"])
