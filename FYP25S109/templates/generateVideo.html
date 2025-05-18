@@ -244,11 +244,10 @@
             </a>
         {% endif %}
         
-        <button id="downloadVideo" class="btn btn-secondary">
-            <i class="fas fa-download me-1"></i>Download Video
+
+        <button id="downloadVideo" class="btn btn-primary">
+          <i class="fas fa-download me-1"></i>Download Video
         </button>
-    </div>
-  
       </div>
     </div>
   </div>
@@ -458,6 +457,44 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+    async function pollForVideo(taskId) {
+      elements.progressStatus.textContent = 'Video is being processed...';
+      let attempts = 0;
+
+      const interval = setInterval(async () => {
+        attempts++;
+        const res  = await fetch(`/check_video/${taskId}`);
+        const data = await res.json();
+
+        if (data.ready) {
+          clearInterval(interval);
+
+          if (data.error) {
+            showNotification(data.error, 'danger');
+            return;
+          }
+
+          const videoId = data.video_id;
+          document.getElementById('videoIdInput').value = videoId;
+          elements.videoPreview.innerHTML = `
+            <video width="640" controls autoplay class="rounded shadow">
+              <source src="/stream_video/${videoId}" type="video/mp4">
+              Your browser does not support HTML5 video.
+            </video>
+          `;
+          elements.videoPreviewContainer.style.display = 'block';
+          elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
+
+          elements.progressBar.style.width = '100%';
+          elements.progressPercent.textContent = '100%';
+          elements.progressStatus.textContent = 'Video ready!';
+        } else {
+          const percent = Math.min(90, attempts * 10);
+          elements.progressBar.style.width = `${percent}%`;
+          elements.progressPercent.textContent = `${percent}%`;
+        }
+      }, 5000);
+    }
   // Voice Recording
   document.getElementById('startRecording').addEventListener('click', async () => {
     try {
@@ -709,6 +746,7 @@ document.addEventListener("DOMContentLoaded", () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          title:     document.getElementById('videoTitleInput').value.trim(),
           avatar_id: avatar.value,
           audio_id: audioChoice.value,
           video_id: data.video_id
@@ -989,43 +1027,6 @@ document.getElementById('mp3UploadForm').addEventListener('submit', async (e) =>
     }, 5000);
 });
 });
-async function pollForVideo(taskId) {
-  elements.progressStatus.textContent = 'Video is being processed...';
-  let attempts = 0;
 
-  const interval = setInterval(async () => {
-    attempts++;
-    const res = await fetch(`/check_video/${taskId}`);
-    const data = await res.json();
-
-    if (data.ready) {
-      clearInterval(interval);
-
-      if (data.error) {
-        showNotification(data.error, 'danger');
-        return;
-      }
-
-      const videoId = data.video_id;
-      document.getElementById('videoIdInput').value = videoId;
-      elements.videoPreview.innerHTML = `
-        <video width="640" controls autoplay class="rounded shadow">
-          <source src="/stream_video/${videoId}" type="video/mp4">
-          Your browser does not support HTML5 video.
-        </video>
-      `;
-      elements.videoPreviewContainer.style.display = 'block';
-      elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
-
-      elements.progressBar.style.width = '100%';
-      elements.progressPercent.textContent = '100%';
-      elements.progressStatus.textContent = 'Video ready!';
-    } else {
-      const percent = Math.min(90, attempts * 10);
-      elements.progressBar.style.width = `${percent}%`;
-      elements.progressPercent.textContent = `${percent}%`;
-    }
-  }, 5000); // Poll every 5 seconds
-}
 </script>
 {% endblock %}
