@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify, send_from_directory, make_response, send_file, abort
+from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app, session, jsonify, send_from_directory, make_response, send_file, abort
 from . import mongo
 import os
 from werkzeug.utils import secure_filename
@@ -449,48 +449,46 @@ class AvatarVideoBoundary:
         )
 
 
-    @staticmethod
     @boundary.route("/save_generated_video", methods=["POST"])
     def save_generated_video():
         try:
-            data = request.get_json()
+            data     = request.get_json()
             username = session.get("username")
-            role = session.get("role")
+            role     = session.get("role")
 
-            title = data.get("title", "").strip() or "Untitled"
+            # Pull the title (not “text”) from the JSON
+            title    = data.get("title", "").strip() or "Untitled"
             audio_id = data.get("audio_id")
-            avatar_id = data.get("avatar_id")
+            avatar_id= data.get("avatar_id")
             video_id = data.get("video_id")
 
             if not all([audio_id, avatar_id, video_id]):
-                return jsonify(success=False, error="Missing required fields.")
+                return jsonify(success=False, error="Missing required fields."), 400
 
-            # ✅ Insert into permanent collection
+            # Insert into permanent collection
             saved = mongo.db.generated_videos.insert_one({
-                "username": username,
-                "role": role,
-                "title": title,
-                "audio_id": ObjectId(audio_id),
-                "avatar_id": ObjectId(avatar_id),
-                "video_id": ObjectId(video_id),
-                "created_at": datetime.utcnow(),
+                "username":     username,
+                "role":         role,
+                "title":        title,
+                "audio_id":     ObjectId(audio_id),
+                "avatar_id":    ObjectId(avatar_id),
+                "video_id":     ObjectId(video_id),
+                "created_at":   datetime.utcnow(),
                 "is_published": False
             })
 
-            # ✅ Remove from temp collection after saving
+            # Remove from temp collection
             mongo.db.tempvideo.delete_many({
                 "username": username,
                 "video_id": ObjectId(video_id)
             })
 
             session["stashed_video_id"] = str(saved.inserted_id)
-
             return jsonify(success=True, saved_id=str(saved.inserted_id))
 
         except Exception as e:
-            print("❌ Error in saving video:", str(e))
+            current_app.logger.exception("Error saving generated video")
             return jsonify(success=False, error=str(e)), 500
-
 
     @staticmethod
     @boundary.route("/upload_recorded_voice", methods=["POST"])
@@ -999,29 +997,39 @@ class AvatarVideoBoundary:
             logging.error(f"Download error: {e}")
             abort(500)
 
-    @staticmethod
-    @boundary.route("/generate_video", methods=["GET"])
-    def generate_video_redirect():
+
+    @boundary.route("/generate_video_page", methods=["GET"])
+    def generate_video_page():
         username = session.get("username")
         if not username:
+            flash("Login required", "error")
             return redirect(url_for("boundary.login"))
 
-        avatars = list(mongo.db.avatar.find({"username": username}))
-        voice_records = list(mongo.db.voice_records.find({"username": username}))
+        # Cleanup old drafts
+        cutoff = datetime.utcnow() - timedelta(hours=6)
+        mongo.db.tempvideo.delete_many({
+            "username": username,
+            "is_published": False,
+            "created_at": {"$lt": cutoff}
+        })
 
-        classroom_id = request.args.get("classroom_id")
+        avatars       = list(mongo.db.avatar.find({"username": username}))
+        voices        = list(mongo.db.voice_records.find({"username": username}))
+        classroom_id  = request.args.get("classroom_id")
         assignment_id = request.args.get("assignment_id")
-        source = request.args.get("source")
+        source        = request.args.get("source")
 
         return render_template(
             "generateVideo.html",
             avatars=avatars,
-            voice_records=voice_records,
+            voice_records=voices,
             classroom_id=classroom_id,
             assignment_id=assignment_id,
             source=source,
-            debug_mode=True
+            show_publish=bool(classroom_id),
+            debug_mode=False
         )
+
         
     @staticmethod
     @boundary.route("/search_video", methods=["POST"])
