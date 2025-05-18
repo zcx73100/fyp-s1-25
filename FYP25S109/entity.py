@@ -346,34 +346,80 @@ class GenerateVideoEntity:
             return None
 
     def generate_voice(self, lang, gender):
-        from gtts import gTTS
-        from bson import ObjectId
-        from datetime import datetime
+        try:
+            if not self.text.strip():
+                raise ValueError("Text input is empty.")
 
-        fs = get_fs()
-        username = session.get("username", "chatbot")
-        lang = lang or "en"
-        gender = gender or "male"
+            # Enhanced voice configuration
+            voice_config = {
+                "en": {
+                    "male": {"tld": "com.au", "lang": "en", "slow": False, "gender_enforced": True},
+                    "female": {"tld": "com.au", "lang": "en", "slow": False, "gender_enforced": True},
+                    "neutral": {"tld": "co.uk", "lang": "en", "slow": False, "gender_enforced": False}
+                },
+                "es": {
+                    "male": {"tld": "com.mx", "lang": "es", "slow": False, "gender_enforced": True},
+                    "female": {"tld": "es", "lang": "es", "slow": False, "gender_enforced": True}
+                },
+                "fr": {
+                    "female": {"tld": "fr", "lang": "fr", "slow": False, "gender_enforced": True},
+                    "neutral": {"tld": "fr", "lang": "fr", "slow": False, "gender_enforced": False}
+                },
+                "de": {
+                    "neutral": {"tld": "de", "lang": "de", "slow": False, "gender_enforced": False}
+                },
+                "it": {
+                    "neutral": {"tld": "it", "lang": "it", "slow": False, "gender_enforced": False}
+                },
+                "ja": {
+                    "neutral": {"tld": "co.jp", "lang": "ja", "slow": False, "gender_enforced": False}
+                },
+                "ko": {
+                    "neutral": {"tld": "co.kr", "lang": "ko", "slow": False, "gender_enforced": False}
+                },
+                "id": {
+                    "neutral": {"tld": "co.id", "lang": "id", "slow": False, "gender_enforced": False}
+                }
+            }
 
-        text = request.form.get("text", "")
-        if not text:
-            raise ValueError("Text is required for voice generation")
+            # Get settings for requested language and gender
+            lang_config = voice_config.get(lang)
+            gender_config = lang_config.get(gender)
+            
+            mp3_buffer = BytesIO()
+            tts = gTTS(
+                text=self.text,
+                lang=lang,
+                tld=gender_config["tld"],
+                slow=gender_config["slow"]
+            )
+            tts.write_to_fp(mp3_buffer)
+            mp3_buffer.seek(0)
 
-        gtts = gTTS(text=text, lang=lang, tld='co.uk' if gender == 'male' else 'com')
-        audio_binary = BytesIO()
-        gtts.write_to_fp(audio_binary)
-        audio_binary.seek(0)
+            audio_id = fs.put(
+                mp3_buffer,
+                filename=f"voice_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.mp3",
+                content_type="audio/mpeg"
+            )
 
-        file_id = fs.put(audio_binary, filename="chatbot_voice.mp3", content_type="audio/mpeg")
+            voice_data = {
+                "audio_id": audio_id,
+                "text": self.text,
+                "lang": lang,
+                "gender": gender,
+                "created_at": datetime.now(),
+                "status": "generated",
+                "username": session.get("username"),
+                "source": "gtts"
+            }
 
-        return mongo.db.audio.insert_one({
-            "username": username,
-            "file_id": file_id,
-            "filename": "chatbot_voice.mp3",
-            "created_at": datetime.utcnow(),
-            "source": "chatbot"
-        }).inserted_id
+            mongo.db.voice_records.insert_one(voice_data)
+            return audio_id
 
+        except Exception as e:
+            print(f"❌ Error generating voice: {e}")
+            return None
+    
 
     @staticmethod    
     def get_videos(username):
