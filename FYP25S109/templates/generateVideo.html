@@ -304,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const txt=gttsText.value.trim(); if(!txt) return showNotification('Enter text','danger');
     try {
-      let res=await fetch('/generate_tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})}),
+      let res=await fetch('/generate_voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})}),
           d=await res.json();
       if(d.success){ ttsAudio.src=d.url; ttsPreview.style.display='block'; audioHidden.value=d.audio_id; await refreshSavedVoices(); }
       else throw new Error(d.error);
