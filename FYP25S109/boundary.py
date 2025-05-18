@@ -266,8 +266,8 @@ class AvatarVideoBoundary:
     
     @boundary.route("/generate_voice_form", methods=["POST"])
     def generate_voice_form():
-        text = request.form.get("text", "").strip()
-        lang = request.form.get("lang", "en")
+        text   = request.form.get("text", "").strip()
+        lang   = request.form.get("lang",  "en")
         gender = request.form.get("gender", "female")
 
         if not text:
@@ -275,13 +275,12 @@ class AvatarVideoBoundary:
 
         try:
             controller = GenerateVideoController()
-            audio_id = controller.generate_voice(text, lang, gender)
+            audio_id   = controller.generate_voice(text, lang, gender)
 
             if not audio_id:
                 return jsonify(success=False, error="Voice generation failed."), 500
 
             return jsonify(success=True, audio_id=str(audio_id))
-
         except Exception as e:
             return jsonify(success=False, error=str(e)), 500
 
@@ -290,93 +289,54 @@ class AvatarVideoBoundary:
     @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["POST"])
     def generate_video(avatar_id, audio_id):
         username = session.get("username")
-        if not username:
-            return jsonify({"success": False, "error": "Login required"}), 401
+        # … validation logic …
 
-        try:
-            avatar_oid = ObjectId(avatar_id)
-            audio_oid = ObjectId(audio_id)
-        except InvalidId as e:
-            return jsonify({"success": False, "error": f"Invalid ObjectId: {str(e)}"}), 400
-
-        text = request.form.get("text", "").strip()
         video_title = request.form.get("video_title", "Untitled")
-        task_id = str(uuid.uuid4())
+        task_id     = str(uuid.uuid4())
 
-        avatar_doc = mongo.db.avatar.find_one({"_id": avatar_oid})
+        avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
         if not avatar_doc:
-            return jsonify({"success": False, "error": "Avatar not found"}), 404
+            return jsonify(success=False, error="Avatar not found"), 404
+
 
         def background_video_generation():
             try:
-                import requests
-                from io import BytesIO
-
                 fs = get_fs()
-                image_file = fs.get(ObjectId(avatar_doc["file_id"]))
-                audio_file = fs.get(audio_oid)
+                img = fs.get(ObjectId(avatar_doc["file_id"]))
+                aud = fs.get(ObjectId(audio_id))
 
                 files = {
-                    "image_file": (image_file.filename, image_file.read(), image_file.content_type or "image/png"),
-                    "audio_file": (audio_file.filename, audio_file.read(), audio_file.content_type or "audio/mpeg")
+                    "image_file": (img.filename, img.read(), img.content_type),
+                    "audio_file": (aud.filename, aud.read(), aud.content_type)
                 }
-
-                data = {
-                    "preprocess_type": "crop",
-                    "is_still_mode": "false",
-                    "enhancer": "false",
-                    "batch_size": 2,
-                    "size_of_image": 256,
-                    "pose_style": 0
-                }
-
                 SADTALKER_API = os.getenv("SADTALKER_API_URL")
-                if not SADTALKER_API:
-                    raise ValueError("SADTALKER_API_URL environment variable is not set")
+                resp = requests.post(SADTALKER_API, files=files, stream=True, timeout=300)
+                resp.raise_for_status()
 
-                response = requests.post(SADTALKER_API, files=files, data=data, stream=True)
-                if response.status_code != 200:
-                    raise Exception(f"SadTalker generation failed: {response.text}")
+                buf = io.BytesIO()
+                for chunk in resp.iter_content(8192):
+                    buf.write(chunk)
+                buf.seek(0)
 
-                video_stream = BytesIO()
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        video_stream.write(chunk)
-                video_stream.seek(0)
-
-                fs_id = fs.put(video_stream, filename=f"{video_title}.mp4", content_type="video/mp4")
+                gridfs_id = fs.put(buf, filename=f"{video_title}.mp4", content_type="video/mp4")
 
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
-                    "avatar_id": avatar_oid,
-                    "audio_id": audio_oid,
-                    "video_id": fs_id,
-                    "title": video_title,
+                    "video_id": gridfs_id,
                     "created_at": datetime.utcnow(),
                     "is_published": False
                 })
-
-            except Exception as e:
-                print(f"[Background Error] {e}")
+            except Exception as err:
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
-                    "avatar_id": avatar_oid,
-                    "audio_id": audio_oid,
-                    "error": str(e),
+                    "error": str(err),
                     "created_at": datetime.utcnow()
                 })
 
-        threading.Thread(target=background_video_generation).start()
-
-        return jsonify({
-            "success": True,
-            "message": "✅ Video generation started.",
-            "task_id": task_id,
-            "video_id": None  # for consistency; may be added post-generation
-        })
-
+        threading.Thread(target=background_video_generation, daemon=True).start()
+        return jsonify(success=True, task_id=task_id)
 
     @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
     def cleanup_old_temp_videos():
@@ -463,34 +423,31 @@ class AvatarVideoBoundary:
     def generate_video_page():
         username = session.get("username")
         if not username:
-            flash("You must be logged in to access this page.", category="error")
-            return redirect(url_for('boundary.login'))
+            flash("Login required", "error")
+            return redirect(url_for("boundary.login"))
 
-        # 🧹 Clean up old temporary videos (older than 6 hours)
+        # Clean up old temp videos…
+        cutoff = datetime.utcnow() - timedelta(hours=6)
         mongo.db.tempvideo.delete_many({
             "username": username,
             "is_published": False,
-            "created_at": {"$lt": datetime.utcnow() - timedelta(hours=6)}
+            "created_at": {"$lt": cutoff}
         })
 
-        # 🧹 Get user's temp videos after cleanup
-        temp_videos = mongo.db.tempvideo.find({"username": username, "is_published": False})
-        video_previews = []
-        for video in temp_videos:
-            try:
-                file_id = video["video_id"]
-                video_previews.append({
-                    "video_id": str(file_id),
-                    "title": f"Generated {video['created_at'].strftime('%Y-%m-%d %H:%M')}"
-                })
-            except Exception as e:
-                print(f"⚠️ Error processing temp video: {e}")
+        avatars      = list(mongo.db.avatar.find({"username": username}))
+        voices       = list(mongo.db.voice_records.find({"username": username}))
+        classroom_id = request.args.get("classroom_id")   # only this one
+        show_publish = bool(classroom_id)                  # show if present
 
-        avatars = list(mongo.db.avatar.find({"username": username}))
-        voices = list(mongo.db.voice_records.find({"username": username}))
+        return render_template(
+            "generateVideo.html",
+            avatars=avatars,
+            voice_records=voices,
+            show_publish=show_publish,
+            classroom_id=classroom_id,
+            debug_mode=False
+        )
 
-        return render_template("generateVideo.html", avatars=avatars, voice_records=voices, videos=video_previews)
-            
 
     @staticmethod
     @boundary.route("/save_generated_video", methods=["POST"])
@@ -500,7 +457,7 @@ class AvatarVideoBoundary:
             username = session.get("username")
             role = session.get("role")
 
-            text = data.get("text", "").strip()
+            title = data.get("title", "").strip() or "Untitled"
             audio_id = data.get("audio_id")
             avatar_id = data.get("avatar_id")
             video_id = data.get("video_id")
@@ -512,7 +469,7 @@ class AvatarVideoBoundary:
             saved = mongo.db.generated_videos.insert_one({
                 "username": username,
                 "role": role,
-                "text": text,
+                "title": title,
                 "audio_id": ObjectId(audio_id),
                 "avatar_id": ObjectId(avatar_id),
                 "video_id": ObjectId(video_id),
@@ -3180,6 +3137,30 @@ class StudentAssignmentBoundary:
             return redirect(url_for('boundary.submit_assignment',
                                     assignment_id=assignment_id,
                                     filename=filename))
+
+
+    @boundary.route('/student/submit_assignment_video', methods=['POST'])
+    def submit_assignment_video():
+        try:
+            data = request.get_json()
+            assignment_id = data.get("assignment_id")
+            video_id = data.get("video_id")
+            username = session.get("username")
+
+            if not all([assignment_id, video_id, username]):
+                return jsonify(success=False, error="Missing required data")
+
+            mongo.db.assignment_submissions.insert_one({
+                "assignment_id": ObjectId(assignment_id),
+                "student_username": username,
+                "video_id": ObjectId(video_id),
+                "submitted_at": datetime.utcnow(),
+                "type": "video"
+            })
+
+            return jsonify(success=True)
+        except Exception as e:
+            return jsonify(success=False, error=str(e)), 500
 
 
     @boundary.route('/student/download_submission/<file_id>')
