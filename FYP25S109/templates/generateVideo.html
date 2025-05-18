@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => note.style.display = 'none', 5000);
     }
 
-    async function pollForVideo(taskId) {
+    async function pollForVideo(taskId, avatarId, audioId) {
         if (!elements) {
             console.error('DOM not ready: elements undefined');
             return;
@@ -95,6 +95,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         showNotification("Error: Missing video ID.", "danger");
                         return;
                     }
+        // Save video once it's ready
+        await fetch('/save_generated_video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            avatar_id: avatarId,
+            audio_id: audioId,
+            video_id: data.video_id
+          })
+        });
+
 
                     elements.videoIdInput.value = data.video_id;
                     elements.videoPreview.innerHTML = `
@@ -206,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.progressBar.style.width = '30%';
     elements.progressPercent.textContent = '30%';
 
-    pollForVideo(data.task_id);
+    pollForVideo(data.task_id, avatarId, audioId);
 
   } catch (error) {
     showNotification("Unexpected error: " + error.message, 'danger');
@@ -855,16 +866,6 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.progressStatus.textContent = 'Processing video...';
       elements.progressBar.style.width = '50%';
       elements.progressPercent.textContent = '50%';
-
-      const saveResponse = await fetch('/save_generated_video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          avatar_id: avatar.value,
-          audio_id: audioChoice.value,
-          video_id: data.video_id
-        })
-      });
 
       if (!saveResponse.ok) {
         throw new Error('Failed to save video record');
