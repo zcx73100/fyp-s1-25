@@ -364,7 +364,7 @@ class AvatarVideoBoundary:
 
     
     # Generate Video for Chatbot
-    boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
+    @boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
     def generate_video_for_chatbot(avatar_id, audio_id):
         username = session.get("username")
         if not username:
