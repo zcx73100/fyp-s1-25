@@ -53,7 +53,7 @@
     {% endif %}
   </div>
 
-  <!-- 👨‍🎓 Student Submission -->
+<!-- 👨‍🎓 Student Submission -->
   {% if session.get('role') == 'Student' %}
     <div class="submission-section mt-5">
       <h3 class="text-white text-xl mb-3">Submit Your Work</h3>
@@ -61,12 +61,23 @@
       {% if student_submission %}
         <p class="text-white"><strong>You have already submitted this assignment.</strong></p>
         <div class="mt-3 flex flex-col gap-2">
-          <a href="{{ url_for('boundary.student_view_submission', submission_id=student_submission._id) }}" class="btn btn-success">📄 View Submission</a>
+          {% if student_submission.type == "video" %}
+            <div class="mt-4">
+              <h4 class="text-white">🎥 Your Submitted Video:</h4>
+              <video controls class="w-full max-w-md mt-2">
+                <source src="{{ url_for('boundary.serve_generated_video', video_id=student_submission.video_id) }}" type="video/mp4">
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          {% else %}
+            <a href="{{ url_for('boundary.student_view_submission', submission_id=student_submission._id) }}" class="btn btn-success">📄 View Submission</a>
+          {% endif %}
           <a href="{{ url_for('boundary.student_edit_submission', submission_id=student_submission._id) }}" class="btn btn-warning">✏️ Edit Submission</a>
           <form action="{{ url_for('boundary.student_delete_submission', submission_id=student_submission._id, assignment_id=assignment._id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete your submission?');">
             <button type="submit" class="btn btn-danger">🗑️ Delete Submission</button>
           </form>
         </div>
+
       {% else %}
         <div class="mb-4 text-left text-white">
           <label class="block text-sm font-semibold mb-2">🎯 Choose Submission Type:</label>
@@ -95,6 +106,7 @@
       {% endif %}
     </div>
   {% endif %}
+
 
   <!-- 👩‍🏫 Teacher View -->
   {% if session.get('role') == 'Teacher' %}
