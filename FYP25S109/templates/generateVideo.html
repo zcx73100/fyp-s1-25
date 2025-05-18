@@ -1,287 +1,205 @@
 {% extends "base.html" %}
 {% block title %}Generate Video{% endblock %}
+
 {% block content %}
 <div class="container py-5">
-<h2 class="text-center mb-4">🎬 Create Animated Video</h2>
-<!-- Notification System -->
-<div class="alert text-center" id="notification" style="display: none;"></div>
-<!-- Debug Info (Conditional) -->
+  <h2 class="text-center mb-4">🎬 Create Animated Video</h2>
+
+  <!-- Notification System -->
+  <div class="alert text-center" id="notification" style="display: none;"></div>
+
+  <!-- Debug Info (Conditional) -->
   {% if debug_mode %}
   <div class="alert alert-secondary mb-4" style="font-size: 0.9em;">
-<strong>Debug Info:</strong><br/>
+    <strong>Debug Info:</strong><br/>
     Session Role: <code>{{ session.get("role") }}</code><br/>
     Source: <code>{{ request.args.get("source") }}</code><br/>
     Classroom ID: <code>{{ request.args.get("classroom_id") }}</code><br/>
     Assignment ID: <code>{{ request.args.get("assignment_id") }}</code>
-</div>
+  </div>
   {% endif %}
 
-  <!-- MP3 Upload Section -->
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-info text-white">
-<h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload MP3 Voice</h5>
-</div>
-<div class="card-body">
-<form enctype="multipart/form-data" id="mp3UploadForm">
-<div class="mb-3">
-<label class="form-label" for="mp3File">Select MP3 File</label>
-<input accept=".mp3,audio/mpeg" class="form-control" id="mp3File" required="" type="file"/>
-<div class="form-text">Maximum file size: 10MB</div>
-</div>
-<div class="mb-3">
-<label class="form-label" for="voiceName">Voice Name (optional)</label>
-<input class="form-control" id="voiceName" placeholder="My Custom Voice" type="text"/>
-</div>
-<button class="btn btn-primary" type="submit">
-<i class="fas fa-upload me-1"></i> Upload Voice
-      </button>
-</form>
-<div class="mt-3 alert" id="mp3UploadStatus" style="display: none;"></div>
-</div>
-</div>
-<!-- GTTS Voice Generation -->
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-warning text-dark">
-<h5 class="mb-0"><i class="fas fa-comment-dots me-2"></i>
-<div class="mt-3" id="tts-preview" style="display: none;">
-<p><strong>Voice Preview:</strong></p>
-<audio controls="" id="tts-audio"></audio>
-</div>
-<input id="tts-audio-id" name="audio_id" type="hidden"/>
-
-
-<h5>Generate Voice using Text</h5>
-</div>
-<div class="card-body">
-<form id="gttsForm">
-<div class="mb-3">
-<textarea class="form-control" id="gttsText" placeholder="Enter text to synthesize..." rows="3"></textarea>
-</div>
-<button class="btn btn-warning" type="submit">
-<i class="fas fa-magic me-1"></i> Generate Voice
-        </button>
-</form>
-<div class="mt-3 alert" id="gttsStatus" style="display: none;"></div>
-</div>
-</div>
-
-<!-- Voice Recording Section -->
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-danger text-white">
-<h5 class="mb-0"><i class="fas fa-microphone-alt me-2"></i>Record Your Voice</h5>
-</div>
-<div class="card-body">
-<div class="d-flex flex-column">
-<div class="d-flex gap-2 mb-3">
-<button class="btn btn-danger flex-grow-1" id="startRecording">
-<i class="fas fa-circle me-1"></i> Start Recording
-          </button>
-<button class="btn btn-secondary flex-grow-1" disabled="" id="stopRecording">
-<i class="fas fa-stop me-1"></i> Stop
-          </button>
-</div>
-<div class="text-center text-muted mb-2" id="recording-status">
-<i class="fas fa-info-circle me-1"></i> Click start to begin recording
+  <!-- === UPLOAD MP3 VOICE === -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-info text-white"><h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload MP3 Voice</h5></div>
+        <div class="card-body">
+          <form id="uploadMp3Form">
+            <div class="mb-2"><input type="file" accept=".mp3" id="mp3FileInput" required class="form-control"/></div>
+            <div class="mb-2"><input type="text" class="form-control" id="voiceNameInput" placeholder="Voice Name"/></div>
+            <button type="submit" class="btn btn-success"><i class="fas fa-upload me-1"></i>Upload</button>
+          </form>
+          <div class="mt-3 alert" id="mp3UploadStatus" style="display: none;"></div>
         </div>
-<div id="recorded-audio-container" style="display: none;">
-<div class="d-flex justify-content-between align-items-center mb-2">
-<label class="form-label mb-0"><i class="fas fa-play-circle me-1"></i>Your Recording</label>
-<div>
-<button class="btn btn-sm btn-success me-2" id="save-recording">
-<i class="fas fa-save"></i> Save
-              </button>
-<button class="btn btn-sm btn-outline-danger" id="delete-recording">
-<i class="fas fa-trash"></i> Delete
-              </button>
-</div>
-</div>
-<audio class="w-100" controls="" id="recordedAudio"></audio>
-<div class="mt-2">
-<input class="form-control form-control-sm" id="recording-name" placeholder="Name your recording (optional)" type="text"/>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Saved Voices Section -->
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-success text-white">
-<h5 class="mb-0"><i class="fas fa-save me-2"></i>Your Saved Voices</h5>
-</div>
-<div class="card-body">
+      </div>
+    </div>
+
+    <!-- GTTS TEXT-TO-SPEECH -->
+    <div class="col-md-4">
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-warning text-dark"><h5 class="mb-0"><i class="fas fa-magic me-2"></i>Generate Voice from Text</h5></div>
+        <div class="card-body">
+          <form id="gttsForm">
+            <div class="mb-2"><textarea class="form-control" id="gttsText" rows="3" placeholder="Enter text to synthesize..."></textarea></div>
+            <button type="submit" class="btn btn-warning"><i class="fas fa-magic me-1"></i>Generate Voice</button>
+          </form>
+          <div class="mt-3 alert" id="gttsStatus" style="display: none;"></div>
+          <div id="tts-preview" style="display: none;" class="mt-3">
+            <p><strong>Voice Preview:</strong></p>
+            <audio controls id="tts-audio"></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECORD VOICE -->
+    <div class="col-md-4">
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-secondary text-white"><h5 class="mb-0"><i class="fas fa-microphone me-2"></i>Record Your Voice</h5></div>
+        <div class="card-body text-center">
+          <button id="startRecording" class="btn btn-outline-primary mb-2">Start</button>
+          <button id="stopRecording" class="btn btn-outline-danger mb-2" disabled>Stop</button>
+          <div id="recorded-audio-container" style="display: none;">
+            <audio id="recordedAudio" controls class="w-100 mb-2"></audio>
+            <div class="mb-2"><input type="text" id="recording-name" class="form-control form-control-sm" placeholder="Name your recording (optional)"/></div>
+            <button id="saveRecording" class="btn btn-success">Save Recording</button>
+            <button id="deleteRecording" class="btn btn-danger">Delete Recording</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVED VOICES -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="fas fa-save me-2"></i>Your Saved Voices</h5></div>
+    <div class="card-body">
       {% if voice_records %}
-        <div class="list-group" id="saved-voices-list">
-          {% for record in voice_records %}
-          <div class="list-group-item list-group-item-action voice-item">
-<div class="d-flex w-100 justify-content-between align-items-center">
-<div class="form-check">
-<input class="form-check-input" id="voice{{ loop.index }}" name="audio_choice" type="radio" value="{{ record.audio_id }}"/>
-<label class="form-check-label" for="voice{{ loop.index }}">
-<span class="voice-name">{{ record.text|truncate(40) or "Voice " ~ loop.index }}</span>
-                  {% if record.source == 'recording' %}
-                  <span class="badge bg-danger ms-1">Recording</span>
-                  {% endif %}
-                </label>
-</div>
-<div class="d-flex align-items-center">
-<button class="btn btn-sm btn-outline-primary play-voice me-2" data-audio-id="{{ record.audio_id }}">
-<i class="fas fa-play"></i>
-</button>
-<button class="btn btn-sm btn-outline-secondary edit-voice me-2" data-audio-id="{{ record.audio_id }}" data-current-name="{{ record.text }}">
-<i class="fas fa-edit"></i>
-</button>
-<button class="btn btn-sm btn-outline-danger delete-voice" data-audio-id="{{ record.audio_id }}">
-<i class="fas fa-trash"></i>
-</button>
-<small class="text-muted ms-2">{{ record.created_at|format_datetime }}</small>
-</div>
-</div>
-<audio id="audio-{{ record.audio_id }}" preload="none" src="/get_voice/{{ record.audio_id }}"></audio>
-</div>
-          {% endfor %}
+      <div class="list-group" id="saved-voices-list">
+        {% for record in voice_records %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <input class="form-check-input me-2" type="radio" name="audio_choice" id="voice{{ loop.index }}" value="{{ record.audio_id }}"/>
+            <label for="voice{{ loop.index }}">
+              <span class="voice-name">{{ record.text|truncate(40) or ("Voice " ~ loop.index) }}</span>
+            </label>
+            {% if record.source=='recording'%}
+              <span class="badge bg-danger ms-1">Recording</span>
+            {% elif record.source=='upload'%}
+              <span class="badge bg-info ms-1">Upload</span>
+            {% endif %}
+          </div>
+          <div>
+            <button class="btn btn-sm btn-outline-primary play-voice" data-audio-id="{{ record.audio_id }}"><i class="fas fa-play"></i></button>
+            <button class="btn btn-sm btn-outline-secondary edit-voice" data-audio-id="{{ record.audio_id }}" data-current-name="{{ record.text }}"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-sm btn-outline-danger delete-voice" data-audio-id="{{ record.audio_id }}"><i class="fas fa-trash"></i></button>
+          </div>
         </div>
+        {% endfor %}
+      </div>
       {% else %}
-        <div class="alert alert-info mb-0">
-<i class="fas fa-info-circle me-2"></i>You haven't saved any voices yet.
-        </div>
+      <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>You haven't saved any voices yet.</div>
       {% endif %}
     </div>
-</div>
-<!-- Avatar Selection Section -->
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-purple text-white">
-<h5 class="mb-0"><i class="fas fa-user-astronaut me-2"></i>Choose Your Avatar</h5>
-</div>
-<div class="card-body">
-      {% if avatars %}
-        <div class="row g-3" id="avatar-selection">
-          {% for avatar in avatars %}
-          <div class="col-6 col-md-4 col-lg-3">
-<div class="avatar-card card h-100">
-<div class="card-body text-center">
-<img class="img-fluid rounded-circle mb-2 avatar-img" src="data:image/png;base64,{{ avatar.image_data }}" style="width: 100px; height: 100px; object-fit: cover;"/>
-<h6 class="card-title mb-1">{{ avatar.avatarname }}</h6>
-<input class="btn-check" id="avatar{{ loop.index }}" name="avatar_id" required="" type="radio" value="{{ avatar._id }}"/>
-<label class="btn btn-outline-primary btn-sm mt-2" for="avatar{{ loop.index }}">
-                  Select
-                </label>
-</div>
-</div>
-</div>
-          {% endfor %}
+  </div>
+
+  <!-- AVATAR SELECTION -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0"><i class="fas fa-user-astronaut me-2"></i>Choose Your Avatar</h5></div>
+    <div class="card-body">
+      <div class="row g-3" id="avatar-selection">
+        {% for avatar in avatars %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="avatar-card card h-100 text-center p-3">
+            <img src="{{ url_for('boundary.stream_avatar',avatar_id=avatar._id) }}" class="img-fluid rounded-circle mb-2 avatar-img"/>
+            <h6 class="mb-1">{{ avatar.name }}</h6>
+            <input type="radio" class="btn-check" name="avatar_id" id="avatar{{ loop.index }}" value="{{ avatar._id }}" required/>
+            <label class="btn btn-outline-light btn-sm" for="avatar{{ loop.index }}">Select</label>
+          </div>
         </div>
-      {% else %}
-        <div class="alert alert-warning mb-0">
-<i class="fas fa-exclamation-triangle me-2"></i>No avatars available. Please create one first.
-        </div>
-      {% endif %}
+        {% endfor %}
+      </div>
     </div>
+  </div>
+
+  <!-- VIDEO TITLE & GENERATE -->
+  <div class="mb-4">
+    <label for="videoTitle" class="form-label">Video Title</label>
+    <input type="text" id="videoTitle" class="form-control" placeholder="Enter a title for your video" required/>
+    <div class="form-text">This will be used to identify your video later</div>
+  </div>
+  <div class="text-center mb-4">
+    <button id="generateVideoBtn" class="btn btn-primary btn-lg px-5"><i class="fas fa-film me-2"></i>Generate Video</button>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div id="progress-container" class="mb-4" style="display: none;">
+    <div class="d-flex justify-content-between mb-1">
+      <span id="progress-status">Preparing...</span>
+      <span id="progress-percent">0%</span>
+    </div>
+    <div class="progress" style="height: 20px;">
+      <div id="progress-bar" class="progress-bar progress-bar-striped" role="progressbar" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <!-- VIDEO PREVIEW & ACTIONS -->
+  <div id="video-preview-container" class="card mb-4 shadow-sm p-4 text-center" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0"><i class="fas fa-play-circle me-2"></i>Video Preview</h5>
+      <button id="editVideoTitleBtn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-edit me-1"></i>Edit Title</button>
+    </div>
+    <h4 id="videoTitleDisplay" class="mb-3"></h4>
+    <div id="video-preview"></div>
+    <div class="mt-3">
+      <button id="publishAssignment" class="btn btn-warning me-2"><i class="fas fa-bullhorn me-1"></i>Publish to Class</button>
+      <button id="downloadVideo" class="btn btn-secondary me-2"><i class="fas fa-download me-1"></i>Download Video</button>
+      <button id="goMyVideos" class="btn btn-info"><i class="fas fa-video me-1"></i>Go to My Videos</button>
+    </div>
+  </div>
+
+  <!-- HIDDEN INPUTS FOR FLOW -->
+  <input type="hidden" id="tts-audio-id" name="audio_id" value=""/>
+  <input type="hidden" id="videoIdInput" value=""/>
+  <input type="hidden" id="classroomIdInput" value="{{ request.args.get('classroom_id') }}"/>
+  <input type="hidden" id="assignmentIdInput" value="{{ request.args.get('assignment_id') }}"/>
+
+  <!-- EDIT / DELETE VOICE MODALS -->
+  <div class="modal fade" id="editVoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Voice Name</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-voice-id-input"/>
+        <input type="text" class="form-control" id="edit-voice-name-input" placeholder="Enter new name"/>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="save-voice-name">Save Changes</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="modal fade" id="deleteVoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger">Delete Voice?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">Are you sure you want to delete this voice?</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete-voice">Delete</button>
+      </div>
+    </div></div>
+  </div>
+
 </div>
-<!-- Add this card above the Generate Video button -->
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-primary text-white">
-<h5 class="mb-0"><i class="fas fa-heading me-2"></i>Video Details</h5>
-</div>
-<div class="card-body">
-<div class="mb-3">
-<label class="form-label" for="videoTitle">Video Title</label>
-<input class="form-control" id="videoTitle" placeholder="Enter a title for your video" required="" type="text"/>
-<div class="form-text">This will be used to identify your video later</div>
-</div>
-</div>
-</div>
-<!-- Video Generation Section -->
-<div class="card mb-4 shadow-sm">
-<div class="card-body text-center">
-<button class="btn btn-primary btn-lg px-5" id="generateVideoBtn" type="submit">
-<i class="fas fa-film me-2"></i>Generate Video
-      </button>
-<!-- Progress Bar -->
-<div class="mt-4" id="progress-container" style="display: none;">
-<div class="d-flex justify-content-between mb-2">
-<span id="progress-status">Preparing video generation...</span>
-<span id="progress-percent">0%</span>
-</div>
-<div class="progress" style="height: 20px;">
-<div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar" role="progressbar" style="width: 0%"></div>
-</div>
-</div>
-</div>
-</div>
-<!-- Video Preview Section -->
-<div class="card mb-4 shadow-sm" id="video-preview-container" style="display: none;">
-<div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-<h5 class="mb-0"><i class="fas fa-play-circle me-2"></i>Video Preview</h5>
-<button class="btn btn-sm btn-light" id="editVideoTitleBtn">
-<i class="fas fa-edit me-1"></i>Edit Title
-    </button>
-</div>
-<div class="card-body text-center">
-<h4 class="mb-3" id="videoTitleDisplay"></h4>
-<div id="video-preview"></div>
-<div class="mt-3" id="video-actions">
-        {% if session.get("role") == "Student" and request.args.get("source") == "submission" %}
-            <button class="btn btn-success me-2" id="submitVideoAssignment">
-<i class="fas fa-paper-plane me-1"></i>Submit Assignment
-            </button>
-        {% elif session.get("role") == "Teacher" and request.args.get("source") == "assignment" %}
-            <button class="btn btn-warning me-2" id="publishAssignment">
-<i class="fas fa-bullhorn me-1"></i>Publish to Class
-            </button>
-        {% elif session.get("role") == "Admin" %}
-            <a class="btn btn-primary me-2" href="{{ url_for('boundary.my_videos') }}">
-<i class="fas fa-video me-1"></i>Go to My Videos for Publishing
-            </a>
-        {% endif %}
-        
-        <button class="btn btn-secondary" id="downloadVideo">
-<i class="fas fa-download me-1"></i>Download Video
-        </button>
-</div>
-</div>
-</div>
-</div>
-<!-- Hidden Inputs -->
-<input id="assignmentIdInput" type="hidden" value="{{ request.args.get('assignment_id') }}"/>
-<input id="classroomIdInput" type="hidden" value="{{ request.args.get('classroom_id') }}"/>
-<input id="videoIdInput" type="hidden" value=""/>
-<!-- Edit Voice Name Modal -->
-<div aria-hidden="true" class="modal fade" id="editVoiceModal" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Edit Voice Name</h5>
-<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
-</div>
-<div class="modal-body">
-<input class="form-control" id="edit-voice-name-input" placeholder="Enter new name" type="text"/>
-<input id="edit-voice-id-input" type="hidden"/>
-</div>
-<div class="modal-footer">
-<button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-<button class="btn btn-primary" id="save-voice-name" type="button">Save Changes</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Delete Confirmation Modal -->
-<div aria-hidden="true" class="modal fade" id="deleteVoiceModal" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header bg-danger text-white">
-<h5 class="modal-title">Confirm Deletion</h5>
-<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
-</div>
-<div class="modal-body">
-<p>Are you sure you want to delete this voice recording? This action cannot be undone.</p>
-</div>
-<div class="modal-footer">
-<button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-<button class="btn btn-danger" id="confirm-delete-voice" type="button">Delete</button>
-</div>
-</div>
-</div>
-</div>
+{% endblock %}
+
 
 <style>
   .bg-purple {
@@ -386,678 +304,353 @@
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const elements = {
-        notification: document.getElementById('notification'),
-        recordedAudio: document.getElementById('recordedAudio'),
-        recordedAudioContainer: document.getElementById('recorded-audio-container'),
-        recordingStatus: document.getElementById('recording-status'),
-        videoPreviewContainer: document.getElementById('video-preview-container'),
-        videoPreview: document.getElementById('video-preview'),
-        progressContainer: document.getElementById('progress-container'),
-        progressBar: document.getElementById('progress-bar'),
-        progressStatus: document.getElementById('progress-status'),
-        progressPercent: document.getElementById('progress-percent'),
-        generateVideoBtn: document.getElementById('generateVideoBtn'),
-        videoIdInput: document.getElementById('videoIdInput')
-    };
-
-    function showNotification(message, type = 'success') {
-        const note = elements.notification;
-        note.textContent = message;
-        note.className = `alert alert-${type} text-center`;
-        note.style.display = 'block';
-        setTimeout(() => note.style.display = 'none', 5000);
-    }
-
-    const avatarId = avatar.value;
-    const audioId = audioChoice.value;
-    async function pollForVideo(taskId, avatarId, audioId) {
-        if (!elements) {
-            console.error('DOM not ready: elements undefined');
-            return;
-        }
-
-        elements.progressStatus.textContent = 'Video is being processed...';
-        let attempts = 0;
-
-        const interval = setInterval(async () => {
-            attempts++;
-            try {
-                const res = await fetch(`/check_video/${taskId}`);
-                const data = await res.json();
-
-                if (data.ready) {
-                    clearInterval(interval);
-
-                    if (!data.video_id) {
-                        showNotification("Error: Missing video ID.", "danger");
-                        return;
-                    }
-        // Save video once it's ready
-        await fetch('/save_generated_video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            avatar_id: avatarId,
-            audio_id: audioId,
-            video_id: data.video_id
-          })
-        });
-
-
-                    elements.videoIdInput.value = data.video_id;
-                    elements.videoPreview.innerHTML = `
-                        <video width="640" controls autoplay class="rounded shadow">
-                            <source src="/stream_video/${data.video_id}" type="video/mp4">
-                            Your browser does not support HTML5 video.
-                        </video>
-                    `;
-                    elements.videoPreviewContainer.style.display = 'block';
-                    elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
-
-                    elements.progressBar.style.width = '100%';
-                    elements.progressPercent.textContent = '100%';
-                    elements.progressStatus.textContent = 'Video ready!';
-                } else {
-                    const percent = Math.min(90, attempts * 10);
-                    elements.progressBar.style.width = `${percent}%`;
-                    elements.progressPercent.textContent = `${percent}%`;
-                }
-            } catch (err) {
-                clearInterval(interval);
-                showNotification("Polling failed: " + err.message, "danger");
-            }
-        }, 5000);
-    }
-
-     elements.generateVideoBtn.addEventListener('click', async (e) => {
-  e.preventDefault();
-
-  const avatar = document.querySelector("input[name='avatar_id']:checked");
-  const audioChoice = document.querySelector("input[name='audio_choice']:checked");
-  const videoTitle = document.getElementById('videoTitle').value.trim();
-
-  if (!audioChoice) {
-    showNotification('Please select or record an audio first!', 'danger');
-    return;
-  }
-
-  if (!avatar) {
-    showNotification('Please select an avatar!', 'danger');
-    return;
-  }
-
-  if (!videoTitle) {
-    showNotification('Please enter a video title!', 'danger');
-    return;
-  }
-
-  const avatarId = avatar.value;
-  const audioId = audioChoice.value;
-
-  const isValidObjectId = id => /^[a-f\d]{24}$/i.test(id);
-  if (!isValidObjectId(avatarId)) {
-    showNotification('Invalid avatar ID format', 'danger');
-    return;
-  }
-
-  if (!isValidObjectId(audioId)) {
-    showNotification('Invalid audio ID format', 'danger');
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('avatar_id', avatarId);
-  formData.append('audio_id', audioId);
-  formData.append('video_title', videoTitle);
-  formData.append('source', "{{ request.args.get('source') }}");
-  formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
-  formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
-
-  elements.progressContainer.style.display = 'block';
-  elements.progressBar.style.width = '0%';
-  elements.progressPercent.textContent = '0%';
-  elements.progressStatus.textContent = 'Starting video generation...';
-  elements.generateVideoBtn.disabled = true;
-
-  try {
-    const response = await fetch(`/generate_video/${avatarId}/${audioId}`, {
-      method: 'POST',
-      body: formData
-    });
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      const text = await response.text();
-      showNotification("Server error: " + text.slice(0, 200), "danger");
-      return;
-    }
-
-    const data = await response.json();
-
-    if (!data.success || !data.task_id) {
-      showNotification("Video generation failed: " + (data.error || "Unknown error"), 'danger');
-      return;
-    }
-
-    // Only one save call
-    await fetch('/save_generated_video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        avatar_id: avatarId,
-        audio_id: audioId,
-        video_id: data.video_id
-      })
-    });
-
-    elements.progressStatus.textContent = 'Processing video...';
-    elements.progressBar.style.width = '30%';
-    elements.progressPercent.textContent = '30%';
-
-    pollForVideo(data.task_id, avatarId, audioId);
-
-  } catch (error) {
-    showNotification("Unexpected error: " + error.message, 'danger');
-    console.error('Video generation error:', error);
-  } finally {
-    elements.generateVideoBtn.disabled = false;
-  }
-});
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize Bootstrap modals
-  const editVoiceModal = new bootstrap.Modal(document.getElementById('editVoiceModal'));
-  const deleteVoiceModal = new bootstrap.Modal(document.getElementById('deleteVoiceModal'));
-
-  // DOM Elements
+  // ─── ELEMENTS ──────────────────────────────────────────────────────────────
   const elements = {
-    notification: document.getElementById('notification'),
-    recordedAudio: document.getElementById('recordedAudio'),
-    recordedAudioContainer: document.getElementById('recorded-audio-container'),
-    recordingStatus: document.getElementById('recording-status'),
-    videoPreviewContainer: document.getElementById('video-preview-container'),
-    videoPreview: document.getElementById('video-preview'),
-    progressContainer: document.getElementById('progress-container'),
-    progressBar: document.getElementById('progress-bar'),
-    progressStatus: document.getElementById('progress-status'),
-    progressPercent: document.getElementById('progress-percent'),
-    generateVideoBtn: document.getElementById('generateVideoBtn'),
-    recordingNameInput: document.getElementById('recording-name'),
-    editVoiceNameInput: document.getElementById('edit-voice-name-input'),
-    editVoiceIdInput: document.getElementById('edit-voice-id-input')
+    notification:        document.getElementById('notification'),
+    mp3Form:             document.getElementById('uploadMp3Form'),
+    mp3FileInput:        document.getElementById('mp3FileInput'),
+    voiceNameInput:      document.getElementById('voiceNameInput'),
+    mp3UploadStatus:     document.getElementById('mp3UploadStatus'),
+
+    gttsForm:            document.getElementById('gttsForm'),
+    gttsText:            document.getElementById('gttsText'),
+    gttsStatus:          document.getElementById('gttsStatus'),
+    ttsPreview:          document.getElementById('tts-preview'),
+    ttsAudio:            document.getElementById('tts-audio'),
+
+    startRecording:      document.getElementById('startRecording'),
+    stopRecording:       document.getElementById('stopRecording'),
+    recordedAudio:       document.getElementById('recordedAudio'),
+    recordedContainer:   document.getElementById('recorded-audio-container'),
+    recordingNameInput:  document.getElementById('recording-name'),
+    saveRecording:       document.getElementById('saveRecording'),
+    deleteRecording:     document.getElementById('deleteRecording'),
+
+    savedVoicesList:     document.getElementById('saved-voices-list'),
+    audioHiddenInput:    document.getElementById('tts-audio-id'),
+
+    avatarInputs:        document.querySelectorAll("input[name='avatar_id']"),
+    audioRadioInputs:    document.querySelectorAll("input[name='audio_choice']"),
+
+    videoTitle:          document.getElementById('videoTitle'),
+    generateBtn:         document.getElementById('generateVideoBtn'),
+
+    progressContainer:   document.getElementById('progress-container'),
+    progressBar:         document.getElementById('progress-bar'),
+    progressStatus:      document.getElementById('progress-status'),
+    progressPercent:     document.getElementById('progress-percent'),
+
+    previewContainer:    document.getElementById('video-preview-container'),
+    previewHolder:       document.getElementById('video-preview'),
+    previewTitleDisplay: document.getElementById('videoTitleDisplay'),
+    editVideoTitleBtn:   document.getElementById('editVideoTitleBtn'),
+    downloadVideo:       document.getElementById('downloadVideo'),
+    publishBtn:          document.getElementById('publishAssignment'),
+    goMyVideosBtn:       document.getElementById('goMyVideos'),
+
+    videoIdInput:        document.getElementById('videoIdInput'),
+    classroomIdInput:    document.getElementById('classroomIdInput'),
+    assignmentIdInput:   document.getElementById('assignmentIdInput')
   };
 
-  // State Management
-  const state = {
-    mediaRecorder: null,
-    recordedChunks: [],
-    isRecording: false,
-    currentAudio: null,
-    currentlyPlaying: null,
-    voiceToDelete: null
-  };
+  const editVoiceModal   = new bootstrap.Modal(document.getElementById('editVoiceModal'));
+  const deleteVoiceModal = new bootstrap.Modal(document.getElementById('deleteVoiceModal'));
+  let state = { mediaRecorder: null, recordedChunks: [], isRecording: false, currentlyPlaying: null, voiceToDelete: null };
 
-  // Notification System
-  function showNotification(message, type = 'success') {
-    const notification = elements.notification;
-    notification.textContent = message;
-    notification.className = `alert alert-${type} text-center`;
-    notification.style.display = 'block';
-    
-    setTimeout(() => {
-      notification.style.display = 'none';
-    }, 5000);
+  function showNotification(msg, type='success') {
+    const n = elements.notification;
+    n.textContent = msg;
+    n.className = `alert alert-${type} text-center`;
+    n.style.display = 'block';
+    setTimeout(()=> n.style.display='none', 4000);
   }
 
-  // Date Formatting Helper
-  function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  function formatDate(dt) {
+    const d = new Date(dt);
+    return d.toLocaleString('en-US',{month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'});
   }
 
-  // Voice Recording
-  document.getElementById('startRecording').addEventListener('click', async () => {
+  // ─── REFRESH SAVED VOICES ────────────────────────────────────────────────────
+  async function refreshSavedVoices() {
     try {
-      state.recordedChunks = [];
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      state.mediaRecorder = new MediaRecorder(stream);
-      state.isRecording = true;
-
-      state.mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) state.recordedChunks.push(e.data);
-      };
-
-      state.mediaRecorder.onstop = () => {
-        const blob = new Blob(state.recordedChunks, { type: 'audio/webm' });
-        elements.recordedAudio.src = URL.createObjectURL(blob);
-        elements.recordedAudioContainer.style.display = 'block';
-        elements.recordingStatus.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Recording complete';
-      };
-
-      state.mediaRecorder.start();
-      document.getElementById('startRecording').disabled = true;
-      document.getElementById('stopRecording').disabled = false;
-      elements.recordingStatus.innerHTML = '<i class="fas fa-circle text-danger blink me-1"></i>Recording...';
-
-    } catch (error) {
-      showNotification('Error accessing microphone: ' + error.message, 'danger');
-      console.error('Recording error:', error);
-    }
-  });
-
-  document.getElementById('stopRecording').addEventListener('click', () => {
-    if (state.mediaRecorder && state.isRecording) {
-      state.mediaRecorder.stop();
-      state.isRecording = false;
-      document.getElementById('startRecording').disabled = false;
-      document.getElementById('stopRecording').disabled = true;
-      
-      // Stop all tracks
-      state.mediaRecorder.stream.getTracks().forEach(track => track.stop());
-    }
-  });
-
-  // Save Recording
-  document.getElementById('save-recording').addEventListener('click', async () => {
-    if (!state.recordedChunks.length) {
-      showNotification('No recording to save!', 'warning');
-      return;
-    }
-
-    const voiceName = elements.recordingNameInput.value.trim() || 'My Recording';
-
-    try {
-      const blob = new Blob(state.recordedChunks, { type: 'audio/webm' });
-      const formData = new FormData();
-      formData.append('audio', blob, 'recording.webm');
-      formData.append('text', voiceName);
-      formData.append('source', 'recording');
-
-      const response = await fetch('/upload_recorded_voice', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
+      const res = await fetch('/list_voices');
+      const data= await res.json();
       if (data.success) {
-        showNotification('Video published to assignment successfully!');
-        window.location.href = `/teacher/upload_assignment/${cid}`;
-      } else {
-        throw new Error(data.error || 'Publishing failed');
+        elements.savedVoicesList.innerHTML = data.records.map(rec=>`
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <input class="form-check-input me-2" type="radio" name="audio_choice" value="${rec.audio_id}" id="voice${rec.audio_id}">
+              <label for="voice${rec.audio_id}"><span class="voice-name">${rec.text||'Voice'}</span></label>
+              ${rec.source==='recording'?'<span class="badge bg-danger ms-1">Recording</span>':''}
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-primary play-voice" data-audio-id="${rec.audio_id}"><i class="fas fa-play"></i></button>
+              <button class="btn btn-sm btn-outline-secondary edit-voice" data-audio-id="${rec.audio_id}" data-current-name="${rec.text}"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-outline-danger delete-voice" data-audio-id="${rec.audio_id}"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        `).join('');
       }
-    } catch (error) {
-      showNotification(error.message, 'danger');
-    }
-  });
+    } catch(e){ console.error(e); }
+  }
 
-  // Delete Buttons
-  document.getElementById('delete-recording').addEventListener('click', (e) => {
+  // ─── MP3 UPLOAD ─────────────────────────────────────────────────────────────
+  elements.mp3Form.addEventListener('submit', async e => {
     e.preventDefault();
-    elements.recordedAudioContainer.style.display = 'none';
-    state.recordedChunks = [];
-    showNotification('Recording deleted');
+    const file = elements.mp3FileInput.files[0];
+    if (!file) return showNotification('Select an MP3 first','danger');
+    const form = new FormData();
+    form.append('audio', file);
+    form.append('name', elements.voiceNameInput.value.trim());
+    try {
+      elements.mp3UploadStatus.style.display='none';
+      const res=await fetch('/upload_mp3_voice',{method:'POST',body:form});
+      const d = await res.json();
+      if (d.success) {
+        showNotification('MP3 uploaded','success');
+        elements.audioHiddenInput.value=d.audio_id;
+        await refreshSavedVoices();
+      } else throw new Error(d.error);
+    } catch(err){ showNotification(err.message,'danger'); }
   });
 
-  // Play Voice Buttons
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('.play-voice')) {
-      const button = e.target.closest('.play-voice');
-      const audioId = button.dataset.audioId;
-      const audioElement = document.getElementById(`audio-${audioId}`);
+  // ─── GTTS TEXT-TO-SPEECH ────────────────────────────────────────────────────
+  elements.gttsForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const txt = elements.gttsText.value.trim();
+    if (!txt) return showNotification('Enter text','danger');
+    elements.gttsStatus.style.display='none';
+    try {
+      const res=await fetch('/generate_tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})});
+      const d=await res.json();
+      if (d.success) {
+        elements.ttsAudio.src=d.url;
+        elements.ttsPreview.style.display='block';
+        elements.audioHiddenInput.value=d.audio_id;
+        await refreshSavedVoices();
+      } else throw new Error(d.error);
+    } catch(err){ showNotification(err.message,'danger'); }
+  });
 
-      // Stop any currently playing audio
-      if (state.currentlyPlaying && state.currentlyPlaying !== audioElement) {
+  // ─── VOICE RECORDING ─────────────────────────────────────────────────────────
+  elements.startRecording.addEventListener('click', async ()=>{
+    try {
+      state.recordedChunks=[];
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      state.mediaRecorder = new MediaRecorder(stream);
+      state.mediaRecorder.ondataavailable = e=>state.recordedChunks.push(e.data);
+      state.mediaRecorder.start();
+      state.isRecording=true;
+      elements.startRecording.disabled=true;
+      elements.stopRecording.disabled=false;
+      showNotification('Recording...','info');
+    } catch(err){ showNotification('Mic access denied','danger'); }
+  });
+
+  elements.stopRecording.addEventListener('click', ()=>{
+    if (!state.isRecording) return;
+    state.mediaRecorder.stop();
+    state.mediaRecorder.stream.getTracks().forEach(t=>t.stop());
+    state.isRecording=false;
+    elements.startRecording.disabled=false;
+    elements.stopRecording.disabled=true;
+    elements.recordedContainer.style.display='block';
+    const blob = new Blob(state.recordedChunks,{type:'audio/webm'});
+    elements.recordedAudio.src=URL.createObjectURL(blob);
+    showNotification('Recording stopped','success');
+  });
+
+  elements.saveRecording.addEventListener('click', async ()=>{
+    if (!state.recordedChunks.length) return showNotification('Nothing to save','danger');
+    const blob=new Blob(state.recordedChunks,{type:'audio/webm'});
+    const form=new FormData();
+    form.append('audio',blob,'recording.webm');
+    form.append('text',elements.recordingNameInput.value.trim());
+    form.append('source','recording');
+    try {
+      const res=await fetch('/upload_recorded_voice',{method:'POST',body:form});
+      const d=await res.json();
+      if (d.success) {
+        elements.audioHiddenInput.value=d.audio_id;
+        showNotification('Recording saved','success');
+        elements.recordedContainer.style.display='none';
+        await refreshSavedVoices();
+      } else throw new Error(d.error);
+    } catch(err){ showNotification(err.message,'danger'); }
+  });
+
+  elements.deleteRecording.addEventListener('click', ()=>{
+    state.recordedChunks=[];
+    elements.recordedContainer.style.display='none';
+    showNotification('Recording discarded','info');
+  });
+
+  // ─── PLAY / EDIT / DELETE SAVED VOICES ──────────────────────────────────────
+  document.addEventListener('click', async e=>{
+    const btn=e.target.closest('.play-voice');
+    if (btn) {
+      const aid=btn.dataset.audioId;
+      const audioEl=document.getElementById(`audio-${aid}`) || (()=>{ 
+        const a=document.createElement('audio'); a.id=`audio-${aid}`; a.src=`/stream_audio/${aid}`; return a;
+      })();
+      document.body.appendChild(audioEl);
+      // pause other
+      if (state.currentlyPlaying && state.currentlyPlaying!==audioEl) {
         state.currentlyPlaying.pause();
-        const prevButton = document.querySelector(`.play-voice[data-audio-id="${state.currentlyPlaying.id.split('-')[1]}"]`);
-        if (prevButton) prevButton.classList.remove('playing');
+        document.querySelector(`.play-voice.playing`)?.classList.remove('playing');
       }
-
-      if (audioElement.paused) {
-        audioElement.play();
-        button.classList.add('playing');
-        state.currentlyPlaying = audioElement;
-        
-        audioElement.onended = () => {
-          button.classList.remove('playing');
-          state.currentlyPlaying = null;
-        };
+      if (audioEl.paused) {
+        audioEl.play(); btn.classList.add('playing'); state.currentlyPlaying=audioEl;
+        audioEl.onended=()=>{btn.classList.remove('playing'); state.currentlyPlaying=null;};
       } else {
-        audioElement.pause();
-        audioElement.currentTime = 0;
-        button.classList.remove('playing');
-        state.currentlyPlaying = null;
+        audioEl.pause(); audioEl.currentTime=0; btn.classList.remove('playing'); state.currentlyPlaying=null;
       }
     }
-  });
-
-  // Edit Voice Name Buttons
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('.edit-voice')) {
-      const button = e.target.closest('.edit-voice');
-      elements.editVoiceIdInput.value = button.dataset.audioId;
-      elements.editVoiceNameInput.value = button.dataset.currentName;
+    // edit
+    const editBtn=e.target.closest('.edit-voice');
+    if (editBtn) {
+      document.getElementById('edit-voice-id-input').value=editBtn.dataset.audioId;
+      document.getElementById('edit-voice-name-input').value=editBtn.dataset.currentName;
       editVoiceModal.show();
     }
-  });
-
-  // Save Edited Voice Name
-  document.getElementById('save-voice-name').addEventListener('click', async () => {
-    const audioId = elements.editVoiceIdInput.value;
-    const newName = elements.editVoiceNameInput.value.trim();
-
-    if (!newName) {
-      showNotification('Please enter a name for your voice recording', 'warning');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/update_voice_name/${audioId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ new_name: newName })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        showNotification('Voice name updated successfully!');
-        await refreshSavedVoices();
-        editVoiceModal.hide();
-      } else {
-        throw new Error(data.error || 'Update failed');
-      }
-    } catch (error) {
-      showNotification(error.message, 'danger');
-    }
-  });
-
-  // Delete Voice Buttons
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('.delete-voice')) {
-      const button = e.target.closest('.delete-voice');
-      state.voiceToDelete = button.dataset.audioId;
+    // delete
+    const delBtn=e.target.closest('.delete-voice');
+    if (delBtn) {
+      state.voiceToDelete=delBtn.dataset.audioId;
       deleteVoiceModal.show();
     }
   });
 
-  // Confirm Voice Deletion
-  document.getElementById('confirm-delete-voice').addEventListener('click', async () => {
+  // save edited voice name
+  document.getElementById('save-voice-name').addEventListener('click', async ()=>{
+    const id  =document.getElementById('edit-voice-id-input').value;
+    const txt =document.getElementById('edit-voice-name-input').value.trim();
+    try {
+      const res=await fetch(`/edit_voice/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})});
+      const d=await res.json();
+      if (d.success) { showNotification('Name updated','success'); await refreshSavedVoices(); }
+      else throw new Error(d.error);
+    } catch(err){ showNotification(err.message,'danger'); }
+    finally{ editVoiceModal.hide(); }
+  });
+
+  // confirm delete voice
+  document.getElementById('confirm-delete-voice').addEventListener('click', async ()=>{
     if (!state.voiceToDelete) return;
-
     try {
-      const response = await fetch(`/delete_voice/${state.voiceToDelete}`, {
-        method: 'DELETE'
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        showNotification('Voice recording deleted successfully!');
-        await refreshSavedVoices();
-      } else {
-        throw new Error(data.error || 'Deletion failed');
-      }
-    } catch (error) {
-      showNotification(error.message, 'danger');
-    } finally {
-      deleteVoiceModal.hide();
-      state.voiceToDelete = null;
-    }
+      const res=await fetch(`/delete_voice/${state.voiceToDelete}`,{method:'DELETE'});
+      const d=await res.json();
+      if (d.success) { showNotification('Deleted','success'); await refreshSavedVoices(); }
+      else throw new Error(d.error);
+    } catch(err){ showNotification(err.message,'danger'); }
+    finally { deleteVoiceModal.hide(); }
   });
 
- 
-
-  // Video Actions
-  document.getElementById('submitVideoAssignment')?.addEventListener('click', async () => {
-    const vid = document.getElementById('videoIdInput').value;
-    const aid = document.getElementById('assignmentIdInput').value;
-
-    if (!vid || !aid) {
-      showNotification('Missing required information', 'danger');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/submit_video_assignment/${aid}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video_id: vid })
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.submission_id) {
-        window.location.href = `/student/view_submission/${data.submission_id}`;
-      } else {
-        throw new Error(data.message || 'Submission failed');
-      }
-    } catch (error) {
-      showNotification(error.message, 'danger');
-    }
-  });
-
-  document.getElementById("publishAssignment")?.addEventListener("click", async () => {
-    const videoId = document.getElementById("videoIdInput").value;
-    const classroomId = document.getElementById("classroomIdInput").value;
-
-    if (!videoId || !classroomId) {
-        alert("Missing video ID or classroom ID.");
-        return;
-    }
-
-    try {
-        const response = await fetch("/publish_assignment_video", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                video_id: videoId,
-                classroom_id: classroomId
-            })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            alert("Video stashed successfully. Redirecting to upload page...");
-            window.location.href = `/teacher/upload_assignment/${classroomId}`;
-        } else {
-            alert("Failed to publish: " + result.error);
-        }
-    } catch (err) {
-        alert("Error publishing: " + err.message);
-    }
-});
-
-  document.getElementById('downloadVideo')?.addEventListener('click', () => {
-    const vid = document.getElementById('videoIdInput').value;
-    if (vid) {
-      window.open(`/download_video/${vid}`, '_blank');
-    }
-  });
-
-  // Helper Functions
-  async function refreshSavedVoices() {
-    try {
-        const response = await fetch('/get_voice_records');
-        const data = await response.json();
-        
-        if (data.success) {
-            const listContainer = document.getElementById('saved-voices-list');
-            if (listContainer) {
-                listContainer.innerHTML = data.records.map(record => `
-                    <div class="list-group-item list-group-item-action voice-item">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="audio_choice" 
-                                       value="${record.audio_id}" id="voice${record.audio_id}">
-                                <label class="form-check-label" for="voice${record.audio_id}">
-                                    <span class="voice-name">${record.text ? record.text.substring(0, 40) : "Voice"}</span>
-                                    ${record.source === 'recording' ? 
-                                      '<span class="badge bg-danger ms-1">Recording</span>' : 
-                                      record.source === 'upload' ? 
-                                      '<span class="badge bg-info ms-1">Upload</span>' : 
-                                      '<span class="badge bg-secondary ms-1">Generated</span>'}
-                                </label>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <button class="btn btn-sm btn-outline-primary play-voice me-2" 
-                                        data-audio-id="${record.audio_id}">
-                                    <i class="fas fa-play"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary edit-voice me-2" 
-                                        data-audio-id="${record.audio_id}"
-                                        data-current-name="${record.text}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger delete-voice" 
-                                        data-audio-id="${record.audio_id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                                <small class="text-muted ms-2">${formatDate(record.created_at)}</small>
-                            </div>
-                        </div>
-                        <audio id="audio-${record.audio_id}" src="/get_voice/${record.audio_id}" preload="none"></audio>
-                    </div>
-                `).join('');
-            }
-        }
-    } catch (error) {
-        console.error('Error refreshing voices:', error);
-    }
-}
-
-  document.getElementById("gttsForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const text = document.getElementById("gttsText").value.trim();
-    const status = document.getElementById("gttsStatus");
-
-    if (!text) {
-      showNotification("Please enter text for GTTS voice generation", "warning");
-      return;
-    }
-
-    try {
-      status.textContent = "Generating voice...";
-      status.className = "mt-3 alert alert-info";
-      status.style.display = "block";
-
-      const response = await fetch("/generate_voice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        showNotification("Voice generated successfully!");
-        await refreshSavedVoices();
-        document.getElementById("gttsText").value = "";
-      } else {
-        throw new Error(data.error || "Failed to generate voice");
-      }
-    } catch (err) {
-      showNotification(err.message, "danger");
-    } finally {
-      status.style.display = "none";
-    }
-  });
-
-  // Enhanced Saved Voice Selection with Audio Preview
-  document.querySelectorAll("input[name='audio_choice']").forEach(radio => {
-    radio.addEventListener('change', async function() {
-      if (!this.checked) return;
-      
-      const audioId = this.value;
-      if (!audioId) return;
-
-      // Pause any currently playing audio
-      elements.recordedAudio.pause();
+  // ─── VIDEO GENERATION & POLLING ────────────────────────────────────────────
+  async function pollForVideo(taskId, avatarId, audioId, title) {
+    let tries=0, max=40, intv=3000;
+    return new Promise((resolve,reject)=>{
+      const t=setInterval(async ()=>{
+        tries++;
+        try {
+          const r=await fetch(`/check_video/${taskId}`);
+          const d=await r.json();
+          if (d.ready && d.video_id) {
+            clearInterval(t);
+            // save
+            await fetch('/save_generated_video',{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({avatar_id:avatarId,audio_id:audioId,video_id:d.video_id,title})
+            });
+            resolve(d.video_id);
+          } else if (tries>=max) {
+            clearInterval(t);
+            reject(new Error('Generation timed out'));
+          } else {
+            let pct=Math.min(95,Math.round((tries/max)*100));
+            elements.progressStatus.textContent=`Generating... (${tries})`;
+            elements.progressPercent.textContent=`${pct}%`;
+            elements.progressBar.style.width=`${pct}%`;
+          }
+        } catch(e){ clearInterval(t); reject(e); }
+      },intv);
     });
+  }
+
+  elements.generateBtn.addEventListener('click', async ()=>{
+    const avatar = [...elements.avatarInputs].find(i=>i.checked)?.value;
+    const audio  = [...elements.audioRadioInputs].find(i=>i.checked)?.value || elements.audioHiddenInput.value;
+    const title  = elements.videoTitle.value.trim();
+    if (!avatar||!audio||!title) return showNotification('Select avatar, audio & title','danger');
+
+    elements.generateBtn.disabled=true;
+    elements.progressContainer.style.display='block';
+    elements.progressBar.style.width='0%';
+    elements.progressPercent.textContent='0%';
+    elements.progressStatus.textContent='Starting...';
+
+    try {
+      const gen=await fetch(`/generate_video/${avatar}/${audio}`,{method:'POST'});
+      const {task_id} = await gen.json();
+      elements.progressStatus.textContent='Generating video...';
+      const vidId = await pollForVideo(task_id,avatar,audio,title);
+
+      // show preview
+      elements.previewTitleDisplay.textContent=title;
+      elements.videoIdInput.value=vidId;
+      elements.previewHolder.innerHTML=`<video src="/stream_video/${vidId}" controls autoplay loop class="w-100 rounded shadow"></video>`;
+      elements.progressContainer.style.display='none';
+      elements.previewContainer.style.display='block';
+      showNotification('Video ready!','success');
+    } catch(err){
+      showNotification(err.message,'danger');
+    } finally {
+      elements.generateBtn.disabled=false;
+    }
   });
 
-  document.querySelectorAll('.avatar-card').forEach(card => {
-    const radio = card.querySelector('input[type="radio"]');
-    const label = card.querySelector('label');
-    
-    radio.addEventListener('change', function() {
-      // Remove selected class from all cards
-      document.querySelectorAll('.avatar-card').forEach(c => {
-        c.classList.remove('selected');
-      });
-      
-      // Add selected class to current card
-      if (this.checked) {
-        card.classList.add('selected');
-      }
-    });
-    
-    // Initialize selected state
-    if (radio.checked) {
-      card.classList.add('selected');
-    }
+  // ─── EDIT VIDEO TITLE ────────────────────────────────────────────────────────
+  elements.editVideoTitleBtn.addEventListener('click', ()=>{
+    const newTitle = prompt('Enter new video title', elements.previewTitleDisplay.textContent);
+    if (newTitle) elements.previewTitleDisplay.textContent=newTitle;
   });
-  // MP3 Upload Handling
-document.getElementById('mp3UploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const fileInput = document.getElementById('mp3File');
-    const nameInput = document.getElementById('voiceName');
-    const statusDiv = document.getElementById('mp3UploadStatus');
-    
-    if (!fileInput.files.length) {
-        showNotification('Please select an MP3 file first!', 'warning');
-        return;
-    }
-    
-    const file = fileInput.files[0];
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        showNotification('File size exceeds 10MB limit', 'danger');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('audio', file);
-    formData.append('name', nameInput.value.trim());
-    
-    statusDiv.textContent = 'Uploading...';
-    statusDiv.className = 'mt-3 alert alert-info';
-    statusDiv.style.display = 'block';
-    
+
+  // ─── DOWNLOAD VIDEO ──────────────────────────────────────────────────────────
+  elements.downloadVideo.addEventListener('click', ()=>{
+    const vid = elements.videoIdInput.value;
+    if (vid) window.location.href = `/download_video/${vid}`;
+    else showNotification('No video to download','danger');
+  });
+
+  // ─── PUBLISH & REDIRECT ──────────────────────────────────────────────────────
+  elements.publishBtn.addEventListener('click', async ()=>{
+    const vid = elements.videoIdInput.value;
+    const cls = elements.classroomIdInput.value;
+    if (!vid||!cls) return showNotification('Missing IDs','danger');
     try {
-        const response = await fetch('/upload_mp3_voice', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            statusDiv.textContent = 'Upload successful!';
-            statusDiv.className = 'mt-3 alert alert-success';
-            showNotification('MP3 voice uploaded successfully!');
-            await refreshSavedVoices();
-            fileInput.value = '';
-            nameInput.value = '';
-        } else {
-            throw new Error(data.error || 'Upload failed');
-        }
-    } catch (error) {
-        statusDiv.textContent = `Error: ${error.message}`;
-        statusDiv.className = 'mt-3 alert alert-danger';
-        console.error('MP3 upload error:', error);
-    }
-    
-    setTimeout(() => {
-        statusDiv.style.display = 'none';
-    }, 5000);
-});
+      const res=await fetch('/publish_assignment_video',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({video_id:vid,classroom_id:cls})
+      });
+      const d=await res.json();
+      if (d.success) {
+        showNotification('Published! Redirecting...','success');
+        setTimeout(()=>window.location.href=`/teacher/upload_assignment/${cls}`,800);
+      } else throw new Error(d.error);
+    } catch(err){ showNotification(err.message,'danger'); }
+  });
+
+  // ─── GO TO MY VIDEOS ─────────────────────────────────────────────────────────
+  elements.goMyVideosBtn.addEventListener('click', ()=>{
+    window.location.href = "{{ url_for('boundary.my_videos') }}";
+  });
+
+  // INITIAL LOAD
+  refreshSavedVoices();
 });
 
 </script>
