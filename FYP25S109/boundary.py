@@ -339,7 +339,7 @@ class AvatarVideoBoundary:
 
     @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
     def cleanup_old_temp_videos():
-        cutoff = datetime.utcnow() - timedelta(hours=6)
+        cutoff = datetime.utcnow() - timedelta(hours=24)
         result = mongo.db.tempvideo.delete_many({
             "is_published": False,
             "created_at": {"$lt": cutoff}
