@@ -264,6 +264,27 @@ class AvatarVideoBoundary:
             print(f"Error streaming audio {audio_id}: {str(e)}")
             return jsonify(success=False, error=f"Audio not found: {str(e)}"), 404
     
+    @boundary.route("/generate_voice_form", methods=["POST"])
+    def generate_voice_form():
+        text = request.form.get("text", "").strip()
+        lang = request.form.get("lang", "en")
+        gender = request.form.get("gender", "female")
+
+        if not text:
+            return jsonify(success=False, error="No text provided."), 400
+
+        try:
+            controller = GenerateVideoController()
+            audio_id = controller.generate_voice(text, lang, gender)
+
+            if not audio_id:
+                return jsonify(success=False, error="Voice generation failed."), 500
+
+            return jsonify(success=True, audio_id=str(audio_id))
+
+        except Exception as e:
+            return jsonify(success=False, error=str(e)), 500
+
 
 
     @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["POST"])
