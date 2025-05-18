@@ -426,7 +426,7 @@ class AvatarVideoBoundary:
             return redirect(url_for("boundary.login"))
 
         # Clean up old temp videos…
-        cutoff = datetime.utcnow() - timedelta(hours=6)
+        cutoff = datetime.utcnow() - timedelta(hours=24)
         mongo.db.tempvideo.delete_many({
             "username": username,
             "is_published": False,
@@ -990,37 +990,6 @@ class AvatarVideoBoundary:
             abort(500)
 
 
-    @boundary.route("/generate_video_page", methods=["GET"])
-    def generate_video_page():
-        username = session.get("username")
-        if not username:
-            flash("Login required", "error")
-            return redirect(url_for("boundary.login"))
-
-        # Cleanup old drafts
-        cutoff = datetime.utcnow() - timedelta(hours=6)
-        mongo.db.tempvideo.delete_many({
-            "username": username,
-            "is_published": False,
-            "created_at": {"$lt": cutoff}
-        })
-
-        avatars       = list(mongo.db.avatar.find({"username": username}))
-        voices        = list(mongo.db.voice_records.find({"username": username}))
-        classroom_id  = request.args.get("classroom_id")
-        assignment_id = request.args.get("assignment_id")
-        source        = request.args.get("source")
-
-        return render_template(
-            "generateVideo.html",
-            avatars=avatars,
-            voice_records=voices,
-            classroom_id=classroom_id,
-            assignment_id=assignment_id,
-            source=source,
-            show_publish=bool(classroom_id),
-            debug_mode=False
-        )
 
         
     @boundary.route("/search_video", methods=["POST"])
