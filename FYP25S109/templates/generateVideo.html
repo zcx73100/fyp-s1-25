@@ -49,187 +49,6 @@
 </div>
 <input id="tts-audio-id" name="audio_id" type="hidden"/>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    const elements = {
-        notification: document.getElementById('notification'),
-        recordedAudio: document.getElementById('recordedAudio'),
-        recordedAudioContainer: document.getElementById('recorded-audio-container'),
-        recordingStatus: document.getElementById('recording-status'),
-        videoPreviewContainer: document.getElementById('video-preview-container'),
-        videoPreview: document.getElementById('video-preview'),
-        progressContainer: document.getElementById('progress-container'),
-        progressBar: document.getElementById('progress-bar'),
-        progressStatus: document.getElementById('progress-status'),
-        progressPercent: document.getElementById('progress-percent'),
-        generateVideoBtn: document.getElementById('generateVideoBtn'),
-        videoIdInput: document.getElementById('videoIdInput')
-    };
-
-    function showNotification(message, type = 'success') {
-        const note = elements.notification;
-        note.textContent = message;
-        note.className = `alert alert-${type} text-center`;
-        note.style.display = 'block';
-        setTimeout(() => note.style.display = 'none', 5000);
-    }
-
-    const avatarId = avatar.value;
-    const audioId = audioChoice.value;
-    async function pollForVideo(taskId, avatarId, audioId) {
-        if (!elements) {
-            console.error('DOM not ready: elements undefined');
-            return;
-        }
-
-        elements.progressStatus.textContent = 'Video is being processed...';
-        let attempts = 0;
-
-        const interval = setInterval(async () => {
-            attempts++;
-            try {
-                const res = await fetch(`/check_video/${taskId}`);
-                const data = await res.json();
-
-                if (data.ready) {
-                    clearInterval(interval);
-
-                    if (!data.video_id) {
-                        showNotification("Error: Missing video ID.", "danger");
-                        return;
-                    }
-        // Save video once it's ready
-        await fetch('/save_generated_video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            avatar_id: avatarId,
-            audio_id: audioId,
-            video_id: data.video_id
-          })
-        });
-
-
-                    elements.videoIdInput.value = data.video_id;
-                    elements.videoPreview.innerHTML = `
-                        <video width="640" controls autoplay class="rounded shadow">
-                            <source src="/stream_video/${data.video_id}" type="video/mp4">
-                            Your browser does not support HTML5 video.
-                        </video>
-                    `;
-                    elements.videoPreviewContainer.style.display = 'block';
-                    elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
-
-                    elements.progressBar.style.width = '100%';
-                    elements.progressPercent.textContent = '100%';
-                    elements.progressStatus.textContent = 'Video ready!';
-                } else {
-                    const percent = Math.min(90, attempts * 10);
-                    elements.progressBar.style.width = `${percent}%`;
-                    elements.progressPercent.textContent = `${percent}%`;
-                }
-            } catch (err) {
-                clearInterval(interval);
-                showNotification("Polling failed: " + err.message, "danger");
-            }
-        }, 5000);
-    }
-
-     elements.generateVideoBtn.addEventListener('click', async (e) => {
-  e.preventDefault();
-
-  const avatar = document.querySelector("input[name='avatar_id']:checked");
-  const audioChoice = document.querySelector("input[name='audio_choice']:checked");
-  const videoTitle = document.getElementById('videoTitle').value.trim();
-
-  if (!audioChoice) {
-    showNotification('Please select or record an audio first!', 'danger');
-    return;
-  }
-
-  if (!avatar) {
-    showNotification('Please select an avatar!', 'danger');
-    return;
-  }
-
-  if (!videoTitle) {
-    showNotification('Please enter a video title!', 'danger');
-    return;
-  }
-
-  const avatarId = avatar.value;
-  const audioId = audioChoice.value;
-
-  const isValidObjectId = id => /^[a-f\d]{24}$/i.test(id);
-  if (!isValidObjectId(avatarId)) {
-    showNotification('Invalid avatar ID format', 'danger');
-    return;
-  }
-
-  if (!isValidObjectId(audioId)) {
-    showNotification('Invalid audio ID format', 'danger');
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('avatar_id', avatarId);
-  formData.append('audio_id', audioId);
-  formData.append('video_title', videoTitle);
-  formData.append('source', "{{ request.args.get('source') }}");
-  formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
-  formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
-
-  elements.progressContainer.style.display = 'block';
-  elements.progressBar.style.width = '0%';
-  elements.progressPercent.textContent = '0%';
-  elements.progressStatus.textContent = 'Starting video generation...';
-  elements.generateVideoBtn.disabled = true;
-
-  try {
-    const response = await fetch(`/generate_video/${avatarId}/${audioId}`, {
-      method: 'POST',
-      body: formData
-    });
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      const text = await response.text();
-      showNotification("Server error: " + text.slice(0, 200), "danger");
-      return;
-    }
-
-    const data = await response.json();
-
-    if (!data.success || !data.task_id) {
-      showNotification("Video generation failed: " + (data.error || "Unknown error"), 'danger');
-      return;
-    }
-
-    // Only one save call
-    await fetch('/save_generated_video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        avatar_id: avatarId,
-        audio_id: audioId,
-        video_id: data.video_id
-      })
-    });
-
-    elements.progressStatus.textContent = 'Processing video...';
-    elements.progressBar.style.width = '30%';
-    elements.progressPercent.textContent = '30%';
-
-    pollForVideo(data.task_id, avatarId, audioId);
-
-  } catch (error) {
-    showNotification("Unexpected error: " + error.message, 'danger');
-    console.error('Video generation error:', error);
-  } finally {
-    elements.generateVideoBtn.disabled = false;
-  }
-});
-
 
 <h5>Generate Voice using Text</h5>
 </div>
@@ -565,7 +384,188 @@ document.addEventListener("DOMContentLoaded", () => {
     vertical-align: middle;
   }
 </style>
+
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+    const elements = {
+        notification: document.getElementById('notification'),
+        recordedAudio: document.getElementById('recordedAudio'),
+        recordedAudioContainer: document.getElementById('recorded-audio-container'),
+        recordingStatus: document.getElementById('recording-status'),
+        videoPreviewContainer: document.getElementById('video-preview-container'),
+        videoPreview: document.getElementById('video-preview'),
+        progressContainer: document.getElementById('progress-container'),
+        progressBar: document.getElementById('progress-bar'),
+        progressStatus: document.getElementById('progress-status'),
+        progressPercent: document.getElementById('progress-percent'),
+        generateVideoBtn: document.getElementById('generateVideoBtn'),
+        videoIdInput: document.getElementById('videoIdInput')
+    };
+
+    function showNotification(message, type = 'success') {
+        const note = elements.notification;
+        note.textContent = message;
+        note.className = `alert alert-${type} text-center`;
+        note.style.display = 'block';
+        setTimeout(() => note.style.display = 'none', 5000);
+    }
+
+    const avatarId = avatar.value;
+    const audioId = audioChoice.value;
+    async function pollForVideo(taskId, avatarId, audioId) {
+        if (!elements) {
+            console.error('DOM not ready: elements undefined');
+            return;
+        }
+
+        elements.progressStatus.textContent = 'Video is being processed...';
+        let attempts = 0;
+
+        const interval = setInterval(async () => {
+            attempts++;
+            try {
+                const res = await fetch(`/check_video/${taskId}`);
+                const data = await res.json();
+
+                if (data.ready) {
+                    clearInterval(interval);
+
+                    if (!data.video_id) {
+                        showNotification("Error: Missing video ID.", "danger");
+                        return;
+                    }
+        // Save video once it's ready
+        await fetch('/save_generated_video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            avatar_id: avatarId,
+            audio_id: audioId,
+            video_id: data.video_id
+          })
+        });
+
+
+                    elements.videoIdInput.value = data.video_id;
+                    elements.videoPreview.innerHTML = `
+                        <video width="640" controls autoplay class="rounded shadow">
+                            <source src="/stream_video/${data.video_id}" type="video/mp4">
+                            Your browser does not support HTML5 video.
+                        </video>
+                    `;
+                    elements.videoPreviewContainer.style.display = 'block';
+                    elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
+
+                    elements.progressBar.style.width = '100%';
+                    elements.progressPercent.textContent = '100%';
+                    elements.progressStatus.textContent = 'Video ready!';
+                } else {
+                    const percent = Math.min(90, attempts * 10);
+                    elements.progressBar.style.width = `${percent}%`;
+                    elements.progressPercent.textContent = `${percent}%`;
+                }
+            } catch (err) {
+                clearInterval(interval);
+                showNotification("Polling failed: " + err.message, "danger");
+            }
+        }, 5000);
+    }
+
+     elements.generateVideoBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
+
+  const avatar = document.querySelector("input[name='avatar_id']:checked");
+  const audioChoice = document.querySelector("input[name='audio_choice']:checked");
+  const videoTitle = document.getElementById('videoTitle').value.trim();
+
+  if (!audioChoice) {
+    showNotification('Please select or record an audio first!', 'danger');
+    return;
+  }
+
+  if (!avatar) {
+    showNotification('Please select an avatar!', 'danger');
+    return;
+  }
+
+  if (!videoTitle) {
+    showNotification('Please enter a video title!', 'danger');
+    return;
+  }
+
+  const avatarId = avatar.value;
+  const audioId = audioChoice.value;
+
+  const isValidObjectId = id => /^[a-f\d]{24}$/i.test(id);
+  if (!isValidObjectId(avatarId)) {
+    showNotification('Invalid avatar ID format', 'danger');
+    return;
+  }
+
+  if (!isValidObjectId(audioId)) {
+    showNotification('Invalid audio ID format', 'danger');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('avatar_id', avatarId);
+  formData.append('audio_id', audioId);
+  formData.append('video_title', videoTitle);
+  formData.append('source', "{{ request.args.get('source') }}");
+  formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
+  formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
+
+  elements.progressContainer.style.display = 'block';
+  elements.progressBar.style.width = '0%';
+  elements.progressPercent.textContent = '0%';
+  elements.progressStatus.textContent = 'Starting video generation...';
+  elements.generateVideoBtn.disabled = true;
+
+  try {
+    const response = await fetch(`/generate_video/${avatarId}/${audioId}`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await response.text();
+      showNotification("Server error: " + text.slice(0, 200), "danger");
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.task_id) {
+      showNotification("Video generation failed: " + (data.error || "Unknown error"), 'danger');
+      return;
+    }
+
+    // Only one save call
+    await fetch('/save_generated_video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        avatar_id: avatarId,
+        audio_id: audioId,
+        video_id: data.video_id
+      })
+    });
+
+    elements.progressStatus.textContent = 'Processing video...';
+    elements.progressBar.style.width = '30%';
+    elements.progressPercent.textContent = '30%';
+
+    pollForVideo(data.task_id, avatarId, audioId);
+
+  } catch (error) {
+    showNotification("Unexpected error: " + error.message, 'danger');
+    console.error('Video generation error:', error);
+  } finally {
+    elements.generateVideoBtn.disabled = false;
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Bootstrap modals
   const editVoiceModal = new bootstrap.Modal(document.getElementById('editVoiceModal'));
@@ -813,87 +813,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Video Generation
-  elements.generateVideoBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    
-    const avatar = document.querySelector("input[name='avatar_id']:checked");
-    const audioChoice = document.querySelector("input[name='audio_choice']:checked");
-    const videoTitle = document.getElementById('videoTitle').value.trim();
-    const avatarId = avatar.value;  // ✅ Now it's safe
-    const audioId = audioChoice.value;
-    
-    if (!audioChoice) {
-      showNotification('Please select or record an audio first!', 'danger');
-      return;
-    }
-
-    if (!avatar) {
-      showNotification('Please select an avatar!', 'danger');
-      return;
-    }
-
-    if (!videoTitle) {
-      showNotification('Please enter a video title!', 'danger');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('avatar_id', avatar.value);
-    formData.append('audio_id', audioChoice.value);
-    formData.append('video_title', videoTitle);  // Add title to form data
-    formData.append('source', "{{ request.args.get('source') }}");
-    formData.append('assignment_id', "{{ request.args.get('assignment_id') }}");
-    formData.append('classroom_id', "{{ request.args.get('classroom_id') }}");
-
-    elements.progressContainer.style.display = 'block';
-    elements.progressBar.style.width = '0%';
-    elements.progressPercent.textContent = '0%';
-    elements.progressStatus.textContent = 'Starting video generation...';
-    elements.generateVideoBtn.disabled = true;
-
-    try {
-      const response = await fetch(`/generate_video/${avatar.value}/${audioChoice.value}`, {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        const taskId = data.task_id;
-        pollForVideo(taskId, avatarId, audioId);
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Video generation failed');
-      }
-
-      elements.progressStatus.textContent = 'Processing video...';
-      elements.progressBar.style.width = '50%';
-      elements.progressPercent.textContent = '50%';
-
-
-      elements.progressBar.style.width = '100%';
-      elements.progressPercent.textContent = '100%';
-      elements.progressStatus.textContent = 'Video generated successfully!';
-
-      document.getElementById('videoIdInput').value = data.video_id;
-      elements.videoPreview.innerHTML = `
-        <video width="640" controls autoplay class="rounded shadow">
-          <source src="/stream_video/${data.video_id}" type="video/mp4">
-          Your browser does not support HTML5 video.
-        </video>
-      `;
-      elements.videoPreviewContainer.style.display = 'block';
-      elements.videoPreviewContainer.scrollIntoView({ behavior: 'smooth' });
-
-    } catch (error) {
-      showNotification(error.message, 'danger');
-      console.error('Video generation error:', error);
-    } finally {
-      elements.generateVideoBtn.disabled = false;
-    }
-  });
+ 
 
   // Video Actions
   document.getElementById('submitVideoAssignment')?.addEventListener('click', async () => {
