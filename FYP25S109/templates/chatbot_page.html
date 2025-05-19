@@ -138,40 +138,6 @@
 <!-- Load MathJax 3 -->
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-<script>
-   
-  
-    // Your existing function — just swap in ASSISTANT_AVATAR_ID here:
-    async function triggerSadTalkerVideo(audioId) {
-      console.log("🎯 triggerSadTalkerVideo called with audioId:", audioId);
-      const avatarId = ASSISTANT_AVATAR_ID;
-      if (!avatarId) {
-        console.error("❌ Avatar ID missing from session or template context.");
-        return;
-      }
-      try {
-        const res = await fetch(`/generate_video_for_chatbot/${avatarId}/${audioId}`, {
-          method: "POST"
-        });
-        const data = await res.json();
-        if (!data.success || !data.video_url) {
-          console.error("❌ Video generation failed:", data.error);
-          return;
-        }
-        // Display video (clearing out the still‐image first)
-        const videoContainer = document.getElementById("video-output-area");
-        videoContainer.innerHTML = "";
-        const videoEl = document.createElement("video");
-        videoEl.src = data.video_url;
-        videoEl.controls = true;
-        videoEl.autoplay = true;
-        videoEl.className = "rounded shadow mb-3";
-        videoContainer.appendChild(videoEl);
-      } catch (err) {
-        console.error("❌ JS Error during SadTalker video generation:", err);
-      }
-    }
-  </script>
   <script>
     window.ASSISTANT_AVATAR_ID = "{{ assistant_avatar_id }}";
     window.selectedTTSVoice    = "{{ assistant_tts_voice }}";
