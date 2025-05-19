@@ -143,42 +143,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // New chat
-  newChatBtn?.addEventListener("click", async () => {
-    try {
-      const res = await fetch("/api/chat/new", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ title: "New Chat" })
-      });
-      const data = await res.json();
-      loadChat(data.chat_id, data.title);
-
-      // update sidebar
-      const item = document.createElement("div");
-      item.className         = "chat-item list-group-item list-group-item-action active";
-      item.dataset.chatId    = data.chat_id;
-      item.dataset.title     = data.title;
-      item.innerHTML         = `<div class="d-flex w-100 justify-content-between">
-                                  <h6 class="mb-1">${data.title}</h6>
-                                  <small>${new Date().toLocaleTimeString()}</small>
-                                </div>
-                                <p class="mb-1 text-truncate">New chat started</p>`;
-      chatList.prepend(item);
-      document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
-      item.classList.add("active");
-    } catch {
-      appendMessage("bot", "Failed to create new chat.");
-    }
-  });
-
-  // Delete chat
-  deleteChatBtn?.addEventListener("click", async () => {
-    if (!currentChatId || !confirm("Delete this chat?")) return;
-    await fetch(`/api/chat/${currentChatId}/delete`, { method: "DELETE" });
-    document.querySelector(`.chat-item[data-chat-id="${currentChatId}"]`)?.remove();
-    resetChatUI();
-  });
 
   // Sidebar load
   chatList?.addEventListener("click", e => {
@@ -189,3 +153,5 @@ document.addEventListener("DOMContentLoaded", () => {
     item.classList.add("active");
   });
 });
+
+
