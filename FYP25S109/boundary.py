@@ -366,6 +366,9 @@ class AvatarVideoBoundary:
     # Generate Video for Chatbot
     @boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
     def generate_video_for_chatbot(avatar_id, audio_id):
+        from bson.objectid import ObjectId
+        from flask import jsonify, session
+
         username = session.get("username")
         if not username:
             return jsonify({"success": False, "error": "Not logged in"}), 401
@@ -375,9 +378,12 @@ class AvatarVideoBoundary:
             avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
             if not avatar_doc:
                 return jsonify({"success": False, "error": "Avatar not found"}), 404
-            file_id = avatar_doc["file_id"]
 
-            # ✅ Call SadTalker
+            file_id = avatar_doc.get("file_id")
+            if not file_id:
+                return jsonify({"success": False, "error": "Avatar missing file_id"}), 400
+
+            # ✅ Call SadTalker via Controller
             controller = GenerateVideoController()
             video_gridfs_id = controller.generate_video(
                 text="",  # Not needed for chatbot
@@ -392,23 +398,23 @@ class AvatarVideoBoundary:
             return jsonify({
                 "success": True,
                 "video_url": f"/stream_video/{video_gridfs_id}"
-            })
+            }), 200
 
         except Exception as e:
             print("❌ Error in generate_video_for_chatbot:", e)
             return jsonify({"success": False, "error": str(e)}), 500
 
 
-    @boundary.route("/check_video/<task_id>", methods=["GET"])
-    def check_video(task_id):
-        result = mongo.db.tempvideo.find_one({"task_id": task_id})
-        if not result:
-            return jsonify(ready=False)
+        @boundary.route("/check_video/<task_id>", methods=["GET"])
+        def check_video(task_id):
+            result = mongo.db.tempvideo.find_one({"task_id": task_id})
+            if not result:
+                return jsonify(ready=False)
 
-        if "error" in result:
-            return jsonify(ready=True, error=result["error"])
+            if "error" in result:
+                return jsonify(ready=True, error=result["error"])
 
-        return jsonify(ready=True, video_id=str(result["video_id"]))
+            return jsonify(ready=True, video_id=str(result["video_id"]))
 
     
     @boundary.route("/stream_video/<video_id>")
