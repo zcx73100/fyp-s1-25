@@ -22,22 +22,26 @@ class ChatbotBoundary:
     def chatbot_page():
         username = session.get("username")
         if not username:
-            return redirect("/login")  # or your auth check
+            return redirect("/login")
 
         user_info = mongo.db.useraccount.find_one({"username": username})
-        assistant_avatar = None
+        assistant_avatar_id = ""
+        assistant_tts_voice = "female_en"  # default value in case missing
 
         if user_info and "assistant" in user_info:
             avatar_id = user_info["assistant"].get("avatar_id")
             if avatar_id:
-                assistant_avatar = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+                assistant_avatar_id = str(avatar_id)
+            assistant_tts_voice = user_info["assistant"].get("tts_voice", "female_en")
 
         chatbot_chats = list(mongo.db.chatbot_chats.find({"username": username}))
 
         return render_template(
             "chatbot_page.html",
             user_info=user_info,
-            chatbot_chats=chatbot_chats
+            chatbot_chats=chatbot_chats,
+            assistant_avatar_id=assistant_avatar_id,
+            assistant_tts_voice=assistant_tts_voice
         )
     
     @chatbot.route("/chatbot/process", methods=["POST"])
@@ -131,21 +135,17 @@ class ChatbotBoundary:
         reply = ChatbotController.process_chat(session['username'], user_message)
         return jsonify({"reply": reply})
     
-    @chatbot.route("/api/chat/new", methods=["POST"])
+    @chatbot.route('/api/chat/new', methods=['POST'])
     def new_chat():
-        username = session.get("username")
-        if not username:
-            return jsonify(error="Unauthorized"), 401
+        if 'username' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
 
-        data = request.get_json() or {}
-        title = data.get("title", "New Chat").strip() or "New Chat"
+        title = request.json.get("title", "New Chat")
+        chat_id = ChatbotController.create_chat(session['username'], title)
 
-        try:
-            chat_id = ChatbotController.create_chat(username, title)
-            return jsonify(chat_id=str(chat_id), title=title), 201
-        except Exception:
-            current_app.logger.exception(f"Failed to create chat for {username}")
-            return jsonify(error="Server error creating chat"), 500
+        if chat_id:
+            return jsonify({"chat_id": chat_id, "title": title})
+        return jsonify({"error": "Failed to create chat"}), 500
 
     
     @chatbot.route('/api/chat/<chat_id>/update_title', methods=['POST'])
@@ -163,26 +163,27 @@ class ChatbotBoundary:
             return jsonify({"success": True})
         return jsonify({"error": "Failed to update title"}), 500
     
-    @chatbot.route("/api/chat/<chat_id>/delete", methods=["DELETE"])
+    @chatbot.route('/api/chat/<chat_id>/delete', methods=['DELETE'])
     def delete_chat(chat_id):
-        username = session.get("username")
-        if not username:
-            return jsonify(error="Unauthorized"), 401
-        try:
-            oid = ObjectId(chat_id)
-        except InvalidId:
-            return jsonify(error="Invalid chat ID"), 400
+        if 'username' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
 
         try:
-            deleted = ChatbotController.delete_chat(username, str(oid))
+       # validate chat_id format
+            oid = ObjectId(chat_id)
+        except InvalidId:
+            return jsonify({"error": "Invalid chat ID"}), 400
+
+        try:
+            deleted = ChatbotController.delete_chat(str(oid), session['username'])
             if deleted:
                 return "", 204
-            else:
-                return jsonify(error="Chat not found or access denied"), 404
-        except Exception:
-            current_app.logger.exception(f"Failed to delete chat {chat_id}")
-            return jsonify(error="Server error during delete"), 500
-        
+            # nothing deleted → not found or no permission
+            return jsonify({"error": "Chat not found or access denied"}), 404
+        except Exception as e:
+            current_app.logger.exception(f"Error deleting chat {chat_id}")
+            return jsonify({"error": "Server error during delete"}), 500
+    
     @chatbot.route('/api/chat/search', methods=['GET'])
     def search_chats():
         if 'username' not in session:
@@ -196,55 +197,66 @@ class ChatbotBoundary:
 
         return jsonify({"chats": chats})
     
-    @chatbot.route("/api/chat/<chat_id>/messages", methods=["GET"])
-    def get_messages(chat_id):
-        username = session.get("username")
-        if not username:
-            return jsonify(error="Unauthorized"), 401
+    @chatbot.route('/api/chat/<chat_id>/messages', methods=['GET'])
+    def get_chat_messages(chat_id):
+        if 'username' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        
         try:
-            # validate chat_id
-            oid = ObjectId(chat_id)
-        except InvalidId:
-            return jsonify(error="Invalid chat ID"), 400
-
-        try:
-            messages = ChatbotController.get_chat_messages(username, str(oid))
-            return jsonify(messages=messages), 200
-        except Exception:
-            current_app.logger.exception(f"Error loading messages for chat {chat_id}")
-            return jsonify(error="Server error loading chat"), 500
-
-    @chatbot.route("/api/chat/<chat_id>/send", methods=["POST"])
-    def send_message(chat_id):
-        username = session.get("username")
-        if not username:
-            return jsonify(error="Unauthorized"), 401
-        try:
-            oid = ObjectId(chat_id)
-        except InvalidId:
-            return jsonify(error="Invalid chat ID"), 400
-
-        data = request.get_json() or {}
-        message = data.get("message", "").strip()
-        if not message:
-            return jsonify(error="No message provided"), 400
-
-        try:
-            # get response from the chat engine
-            response = ChatAPI.get_chat_response(message)
-
-            # persist both user message and bot response
-            mongo_res = ChatbotController.append_messages(
-                username, str(oid), message, response
+            chat = mongo.db.chatbot_chats.find_one(
+                {"_id": ObjectId(chat_id), "username": session['username']},
+                {"messages": 1}
             )
-            if not mongo_res:
-                return jsonify(error="Chat not found or access denied"), 404
+            
+            if not chat:
+                return jsonify({"error": "Chat not found"}), 404
+                
+            return jsonify({"messages": chat.get("messages", [])})
+        except Exception as e:
+            print(f"[Error] {e}")
+            return jsonify({"error": "Server error"}), 500
 
-            return jsonify(reply=response), 200
-
-        except Exception:
-            current_app.logger.exception(f"Error sending message to chat {chat_id}")
-            return jsonify(error="Server error"), 500
+    @chatbot.route('/api/chat/<chat_id>/send', methods=['POST'])
+    def send_message(chat_id):
+        if 'username' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        message = request.json.get("message")
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+        
+        try:
+            # Get chatbot response
+            response = ChatAPI.get_chat_response(message)
+            
+            # Update chat with new messages
+            result = mongo.db.chatbot_chats.update_one(
+                {"_id": ObjectId(chat_id), "username": session['username']},
+                {
+                    "$push": {
+                        "messages": {
+                            "user": message,
+                            "bot": response,
+                            "timestamp": datetime.utcnow()
+                        }
+                    },
+                    "$set": {
+                        "last_updated": datetime.utcnow(),
+                        "description": message[:50]  # Update description with first 50 chars of last message
+                    }
+                }
+            )
+            
+            if result.modified_count == 0:
+                return jsonify({"error": "Chat not found or not updated"}), 404
+                
+            return jsonify({
+                "reply": response,
+                "chat_id": chat_id
+            })
+        except Exception as e:
+            print(f"[Error] {e}")
+            return jsonify({"error": "Server error"}), 500
 
 
 # Control Layer (business logic)
