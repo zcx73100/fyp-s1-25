@@ -1,75 +1,117 @@
-// static/chatbot.js
+
+// ==============================
+// chatbot.js (Full Feature Version with TTS + Video + Markdown + Sidebar)
+// ==============================
 
 document.addEventListener("DOMContentLoaded", () => {
-  // —— DOM references ——  
-  const messageInput      = document.getElementById("message-input");
-  const chatForm          = document.getElementById("chat-form");
-  const messagesContainer = document.getElementById("messages-container");
-  const chatList          = document.getElementById("chat-list");
-  const newChatBtn        = document.getElementById("new-chat-btn");
-  const deleteChatBtn     = document.getElementById("delete-chat-btn");
-  const chatTitle         = document.getElementById("chat-title");
-  const chatActions       = document.getElementById("chat-actions");
-  const welcomeMessage    = document.getElementById("welcome-message");
-  const selectedVoiceSpan = document.getElementById("selected-voice");
-  
-  // —— Config & state ——  
-  const ASSISTANT_AVATAR_ID = window.ASSISTANT_AVATAR_ID;
-  window.selectedTTSVoice   = window.selectedTTSVoice  || selectedVoiceSpan?.dataset.voice || "female_en";
-  let currentChatId = null, isLoading = false;
+  const chatForm = document.getElementById('chat-form');
+  const messageInput = document.getElementById('message-input');
+  const messagesContainer = document.getElementById('messages-container');
+  const welcomeMessage = document.getElementById('welcome-message');
+  const chatList = document.getElementById('chat-list');
+  const sidebar = document.getElementById('sidebar-wrapper');
+  const toggleBtn = document.getElementById('toggle-sidebar');
+  const newChatBtn = document.getElementById('new-chat-btn');
+  const deleteChatBtn = document.getElementById('delete-chat-btn');
+  const chatTitle = document.getElementById('chat-title');
+  const chatActions = document.getElementById('chat-actions');
+  const chatSearch = document.getElementById('chat-search');
+  const videoOutputArea = document.getElementById("video-output-area");
 
-  // —— Helpers ——  
-  function scrollToBottom() {
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  let currentChatId = null;
+  let isLoading = false;
+  let currentUtterance = null;
+  let isTTSEnabled = true;
+  let speechRate = 1.1;
+
+  const speechSynthesis = window.speechSynthesis;
+
+  // Sidebar toggle
+  const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+  if (sidebarCollapsed) {
+    sidebar.classList.add("collapsed");
+    toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    toggleBtn.classList.add("collapsed");
   }
 
-  function appendMessage(role, text) {
-    const row    = document.createElement("div");
-    row.className = `message-row ${role}`;
+  toggleBtn.addEventListener("click", () => {
+    const isCollapsed = sidebar.classList.toggle("collapsed");
+    localStorage.setItem("sidebarCollapsed", isCollapsed);
+    toggleBtn.innerHTML = isCollapsed ? '<i class="fas fa-chevron-right"></i>' : '<i class="fas fa-chevron-left"></i>';
+    toggleBtn.classList.toggle("collapsed", isCollapsed);
+  });
 
-    const bubble = document.createElement("div");
-    bubble.className = `message-${role}`;
-    bubble.innerHTML = text;
-    row.appendChild(bubble);
-
-    messagesContainer.appendChild(row);
-    scrollToBottom();
-
-    if (role === "bot") {
-      // fire-and-forget video generation
-      autoGenerateVideo(text, bubble);
-    }
-  }
-
-  async function autoGenerateVideo(text, bubbleContainer) {
+  newChatBtn?.addEventListener("click", async () => {
     try {
-      // 1) Generate TTS
-      const fd = new FormData();
-      fd.append("text", text);
-      fd.append("voice", window.selectedTTSVoice);
-      const ttsRes = await fetch("/generate_voice_form", { method: "POST", body: fd });
-      const { audio_id } = await ttsRes.json();
-      if (!audio_id) throw new Error("TTS failed");
+      const res = await fetch("/api/chat/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "New Chat" })
+      });
+      const data = await res.json();
+      loadChat(data.chat_id, data.title);
+      const item = document.createElement("div");
+      item.className = "chat-item list-group-item list-group-item-action active";
+      item.dataset.chatId = data.chat_id;
+      item.dataset.title = data.title;
+      item.innerHTML = `<div class="d-flex w-100 justify-content-between">
+                          <h6 class="mb-1">${data.title}</h6>
+                          <small>${new Date().toLocaleTimeString()}</small>
+                        </div>
+                        <p class="mb-1 text-truncate">New chat started</p>`;
+      chatList.prepend(item);
+      document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+    } catch {
+      appendMessage("bot", "Failed to create new chat.");
+    }
+  });
 
-      // 2) Generate SadTalker video
-      const vidRes = await fetch(
-        `/generate_video_for_chatbot/${ASSISTANT_AVATAR_ID}/${audio_id}`,
-        { method: "POST" }
-      );
-      const { success, video_url } = await vidRes.json();
-      if (!success || !video_url) throw new Error("Video gen failed");
+  deleteChatBtn?.addEventListener("click", async () => {
+    if (!currentChatId || !confirm("Are you sure you want to delete this chat?")) return;
+    try {
+      const res = await fetch(`/api/chat/${currentChatId}/delete`, { method: "DELETE" });
+      if (res.status === 204) {
+        document.querySelector(`.chat-item[data-chat-id="${currentChatId}"]`)?.remove();
+        resetChatUI();
+      }
+    } catch {
+      alert("Failed to delete chat.");
+    }
+  });
 
-      // 3) Inject the video under the bot bubble
-      const v = document.createElement("video");
-      v.src      = video_url;
-      v.controls = true;
-      v.autoplay = true;
-      v.className= "bot-video mt-2";
-      bubbleContainer.appendChild(v);
-      scrollToBottom();
+  chatSearch?.addEventListener("input", () => {
+    const query = chatSearch.value.toLowerCase();
+    document.querySelectorAll(".chat-item").forEach(item => {
+      const title = item.dataset.title.toLowerCase();
+      item.style.display = title.includes(query) ? "" : "none";
+    });
+  });
 
-    } catch (e) {
-      console.warn("Background video error:", e);
+  async function loadChat(chatId, title) {
+    try {
+      isLoading = true;
+      currentChatId = chatId;
+      chatTitle.textContent = title;
+      chatActions.classList.remove("d-none");
+      welcomeMessage.classList.add("d-none");
+      messagesContainer.classList.remove("d-none");
+      messageInput.disabled = false;
+      chatForm.querySelector("button").disabled = false;
+      messagesContainer.innerHTML = "";
+
+      const res = await fetch(`/api/chat/${chatId}/messages`);
+      const data = await res.json();
+      for (const msg of data.messages) {
+        appendMessage("user", msg.user);
+        appendMessage("bot", msg.bot);
+      }
+
+      if (window.MathJax) MathJax.typesetPromise([messagesContainer]);
+    } catch {
+      appendMessage("bot", "Error loading chat.");
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -81,77 +123,156 @@ document.addEventListener("DOMContentLoaded", () => {
     messagesContainer.classList.add("d-none");
     messagesContainer.innerHTML = "";
     messageInput.disabled = true;
-    chatForm?.querySelector("button")?.setAttribute("disabled", "");
+    chatForm.querySelector("button").disabled = true;
   }
 
-  async function loadChat(chatId, title) {
-    isLoading = true;
-    currentChatId = chatId;
+  function processMarkdownBold(text) {
+    return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  }
 
-    chatTitle.textContent = title;
-    chatActions.classList.remove("d-none");
-    welcomeMessage.classList.add("d-none");
-    messagesContainer.classList.remove("d-none");
-    messagesContainer.innerHTML = "";
+  function appendMessage(sender, message) {
+    const row = document.createElement("div");
+    row.className = `message-row ${sender}`;
+    const div = document.createElement("div");
+    div.className = `message-${sender}`;
+    const processed = processMarkdownBold(message);
+    div.innerHTML = `<div>${processed}</div>`;
+    row.appendChild(div);
 
-    messageInput.disabled = false;
-    chatForm?.querySelector("button")?.removeAttribute("disabled");
+    if (sender === "bot") {
+      const controls = document.createElement("div");
+      controls.className = "tts-controls";
+      controls.innerHTML = `
+        <button class="tts-btn"><i class="fas fa-volume-up"></i> Read</button>
+        <button class="tts-stop-btn"><i class="fas fa-stop"></i> Stop</button>
+      `;
+      div.appendChild(controls);
+      controls.querySelector(".tts-btn").addEventListener("click", () => speakText(message));
+      controls.querySelector(".tts-stop-btn").addEventListener("click", stopSpeech);
+    }
+
+    messagesContainer.appendChild(row);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  chatForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (!message || !currentChatId || isLoading) return;
+    appendMessage("user", message);
+    messageInput.value = "";
 
     try {
-      const res  = await fetch(`/api/chat/${chatId}/messages`);
-      const data = await res.json();
-      data.messages.forEach(m => {
-        appendMessage("user", m.user);
-        appendMessage("bot", m.bot);
+      isLoading = true;
+      const res = await fetch(`/api/chat/${currentChatId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
       });
+      const data = await res.json();
+      appendMessage("bot", data.reply);
+      await autoGenerateVideo(data.reply);
     } catch {
-      appendMessage("bot", "Error loading chat.");
+      appendMessage("bot", "Sorry, something went wrong.");
     } finally {
       isLoading = false;
-      scrollToBottom();
-    }
-  }
-
-  // —— Event bindings ——  
-
-  // Send on Enter
-  messageInput?.addEventListener("keydown", async e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-
-      welcomeMessage.classList.add("d-none");
-      messagesContainer.classList.remove("d-none");
-      const msg = messageInput.value.trim();
-      if (!msg || !currentChatId || isLoading) return;
-      messageInput.value = "";
-      appendMessage("user", msg);
-
-      try {
-        isLoading = true;
-        const res  = await fetch(`/api/chat/${currentChatId}/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: msg })
-        });
-        const { reply } = await res.json();
-        appendMessage("bot", reply);
-      } catch {
-        appendMessage("bot", "Error sending message.");
-      } finally {
-        isLoading = false;
-      }
     }
   });
 
-
-  // Sidebar load
-  chatList?.addEventListener("click", e => {
+  chatList?.addEventListener("click", (e) => {
     const item = e.target.closest(".chat-item");
     if (!item) return;
-    loadChat(item.dataset.chatId, item.dataset.title);
     document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
     item.classList.add("active");
+    loadChat(item.dataset.chatId, item.dataset.title);
   });
+
+  let originalTitle = "";
+  chatTitle?.addEventListener("focus", () => {
+    originalTitle = chatTitle.textContent.trim();
+  });
+  chatTitle?.addEventListener("blur", async () => {
+    const newTitle = chatTitle.textContent.trim();
+    if (!currentChatId || newTitle === "" || newTitle === originalTitle) return;
+    try {
+      await fetch(`/api/chat/${currentChatId}/update_title`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle })
+      });
+      const sidebarItem = document.querySelector(`.chat-item[data-chat-id="${currentChatId}"]`);
+      if (sidebarItem) {
+        sidebarItem.querySelector("h6").textContent = newTitle;
+        sidebarItem.dataset.title = newTitle;
+      }
+    } catch {
+      chatTitle.textContent = originalTitle;
+    }
+  });
+  chatTitle?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      chatTitle.blur();
+    }
+  });
+
+  function stopSpeech() {
+    speechSynthesis.cancel();
+  }
+
+  async function speakText(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = speechRate;
+    utterance.pitch = 1.2;
+    utterance.volume = 1.0;
+
+    const voices = speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith("en")) || voices[0];
+    utterance.voice = preferred;
+
+    speechSynthesis.speak(utterance);
+  }
+
+  async function autoGenerateVideo(text) {
+    try {
+      const formData = new FormData();
+      formData.append("text", text);
+      const voice = window.selectedTTSVoice || "female_en";
+      const lang = voice.includes("jp") ? "ja" :
+                   voice.includes("id") ? "id" :
+                   voice.includes("es") ? "es" :
+                   voice.includes("fr") ? "fr" :
+                   voice.includes("de") ? "de" :
+                   voice.includes("it") ? "it" : "en";
+      const gender = voice.includes("female") ? "female" : "male";
+
+      formData.append("lang", lang);
+      formData.append("gender", gender);
+
+      const res = await fetch("/generate_voice_form", {
+        method: "POST",
+        body: formData
+      });
+
+      const { audio_id } = await res.json();
+      if (!audio_id) return;
+
+      const videoRes = await fetch(`/generate_video_for_chatbot/${window.ASSISTANT_AVATAR_ID}/${audio_id}`, {
+        method: "POST"
+      });
+
+      const { video_url } = await videoRes.json();
+      if (video_url) {
+        const videoEl = document.createElement("video");
+        videoEl.src = video_url;
+        videoEl.controls = true;
+        videoEl.autoplay = true;
+        videoEl.className = "rounded shadow mb-3";
+        videoOutputArea.innerHTML = "";
+        videoOutputArea.appendChild(videoEl);
+      }
+    } catch (err) {
+      console.error("Video generation failed:", err);
+    }
+  }
 });
-
-
