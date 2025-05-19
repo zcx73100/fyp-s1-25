@@ -64,7 +64,7 @@ class ChatbotBoundary:
             return "❌ Voice generation failed", 500
 
         # ✅ Redirect to SadTalker-compatible route with audio_id
-        return redirect(url_for("boundary.generate_video_from_session_post", audio_id=audio_id, text=text))
+        return redirect(url_for("boundary.generate_video_for_chatbot", audio_id=audio_id, text=text))
 
 
     @chatbot.route('/select_avatar/assign', methods=['POST'])
