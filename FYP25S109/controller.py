@@ -595,17 +595,3 @@ class GetUnreadNotificationsController:
         notifications = Notification.get_unread_notifications(username)
         return notifications if notifications is not None else []
 
-class ChatbotController:
-    @staticmethod
-    def get_chat_messages(username, chat_id):
-        try:
-            chat = mongo.db.chatbot_chats.find_one(
-                {"_id": ObjectId(chat_id), "username": username},
-                {"messages": 1}
-            )
-            if not chat:
-                return []
-            return chat.get("messages", [])
-        except Exception as e:
-            logging.error(f"[Mongo Error] {e}")
-            return []

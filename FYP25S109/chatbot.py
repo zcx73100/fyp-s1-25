@@ -285,6 +285,19 @@ class ChatbotController:
     def search_chats(username, keyword):
         return Chat.search_chats(username, keyword)
     
+    @staticmethod
+    def get_chat_messages(username, chat_id):
+        try:
+            chat = mongo.db.chatbot_chats.find_one(
+                {"_id": ObjectId(chat_id), "username": username},
+                {"messages": 1}
+            )
+            if not chat:
+                return []
+            return chat.get("messages", [])
+        except Exception as e:
+            logging.error(f"[Mongo Error] {e}")
+            return []
 
 # Service Layer (API Communication)
 class ChatAPI:
