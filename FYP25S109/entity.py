@@ -345,7 +345,7 @@ class GenerateVideoEntity:
             print(f"❌ Error during video generation: {e}")
             return None
 
-    def generate_voice(self, lang, gender):
+    def generate_voice(self, lang, gender, source="manual"):
         try:
             if not self.text.strip():
                 raise ValueError("Text input is empty.")
@@ -395,7 +395,9 @@ class GenerateVideoEntity:
             )
             tts.write_to_fp(mp3_buffer)
             mp3_buffer.seek(0)
+
             fs = get_fs()
+
             audio_id = fs.put(
                 mp3_buffer,
                 filename=f"voice_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.mp3",
@@ -410,7 +412,7 @@ class GenerateVideoEntity:
                 "created_at": datetime.now(),
                 "status": "generated",
                 "username": session.get("username"),
-                "source": "gtts"
+                "source": source
             }
 
             mongo.db.voice_records.insert_one(voice_data)

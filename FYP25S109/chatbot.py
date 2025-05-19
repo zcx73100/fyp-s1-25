@@ -59,7 +59,7 @@ class ChatbotBoundary:
 
         # ✅ Generate voice
         controller = GenerateVideoController()
-        audio_id = controller.generate_voice(text, lang, gender)
+        audio_id = controller.generate_voice(text, lang, gender,  source="chatbot")
         if not audio_id:
             return "❌ Voice generation failed", 500
 

@@ -268,13 +268,14 @@ class AvatarVideoBoundary:
         text   = request.form.get("text", "").strip()
         lang   = request.form.get("lang",  "en")
         gender = request.form.get("gender", "female")
+        source = request.form.get("source", "manual") 
 
         if not text:
             return jsonify(success=False, error="No text provided."), 400
 
         try:
             controller = GenerateVideoController()
-            audio_id   = controller.generate_voice(text, lang, gender)
+            audio_id   = controller.generate_voice(text, lang, gender, source)
 
             if not audio_id:
                 return jsonify(success=False, error="Voice generation failed."), 500

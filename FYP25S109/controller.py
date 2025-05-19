@@ -500,21 +500,25 @@ class StudentDeleteSubmissionController:
     def delete_submission(submission_id):
         return Submission.delete_submission(submission_id)
 
+
 class GenerateVideoController:
     @staticmethod
-    def generate_voice(text, lang="en", gender="female"):
+    def generate_voice(text, lang="en", gender="female", source="manual"):
+        
         entity = GenerateVideoEntity(text=text)
-        audio_id = entity.generate_voice(lang=lang, gender=gender)
+        audio_id = entity.generate_voice(lang=lang, gender=gender, source=source)
         return audio_id
 
     @staticmethod
-    def generate_video(text, avatar_id, audio_id,title):
+    def generate_video(text, avatar_id, audio_id, title):
+
         entity = GenerateVideoEntity(text=text, avatar_path=avatar_id, audio_path=audio_id)
-        video_id = entity.generate_video(avatar_id,audio_id,video_title=title)
+        video_id = entity.generate_video(avatar_id, audio_id, video_title=title)
         return video_id
-    
+
     @staticmethod
     def get_videos(username):
+       
         return GenerateVideoEntity.get_videos(username)
 
 
