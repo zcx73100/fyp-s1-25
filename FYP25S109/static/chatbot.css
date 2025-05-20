@@ -146,13 +146,19 @@
 }
 
 #sidebar-wrapper {
-  transition: all 0.3s ease;
-  width: 350px;
-  padding: 20px;
+  width: 280px;
   background-color: #f8f9fa;
-  height: 90vh;
+  padding: 20px;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid #ddd;
+  flex-shrink: 0;
 }
 
+#main-chat {
+  overflow-y: auto;
+  background-color: white;
+}
 #sidebar-wrapper.collapsed {
   width: 0 !important;
   padding: 0 !important;
