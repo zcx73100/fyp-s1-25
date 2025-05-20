@@ -233,46 +233,42 @@ document.addEventListener("DOMContentLoaded", () => {
     speechSynthesis.speak(utterance);
   }
 
-  async function autoGenerateVideo(text) {
+  async function checkAndReplaceAvatarWithVideo(taskId) {
     try {
-      const formData = new FormData();
-      formData.append("text", text);
-      const voice = window.selectedTTSVoice || "female_en";
-      const lang = voice.includes("jp") ? "ja" :
-                   voice.includes("id") ? "id" :
-                   voice.includes("es") ? "es" :
-                   voice.includes("fr") ? "fr" :
-                   voice.includes("de") ? "de" :
-                   voice.includes("it") ? "it" : "en";
-      const gender = voice.includes("female") ? "female" : "male";
+      const checkUrl = `/check_video/${taskId}`;
+      let attempts = 0;
 
-      formData.append("lang", lang);
-      formData.append("gender", gender);
+      const intervalId = setInterval(async () => {
+        const res = await fetch(checkUrl);
+        const data = await res.json();
 
-      const res = await fetch("/generate_voice_form", {
-        method: "POST",
-        body: formData
-      });
+        if (data.ready) {
+          clearInterval(intervalId);
 
-      const { audio_id } = await res.json();
-      if (!audio_id) return;
+          if (data.error) {
+            console.error("❌ Video generation failed:", data.error);
+            return;
+          }
 
-      const videoRes = await fetch(`/generate_video_for_chatbot/${window.ASSISTANT_AVATAR_ID}/${audio_id}`, {
-        method: "POST"
-      });
+          const videoUrl = `/stream_video/${data.video_id}`;
+          const avatarContainer = document.getElementById("avatar-container");
+          if (!avatarContainer) return;
 
-      const { video_url } = await videoRes.json();
-      if (video_url) {
-        const videoEl = document.createElement("video");
-        videoEl.src = video_url;
-        videoEl.controls = true;
-        videoEl.autoplay = true;
-        videoEl.className = "rounded shadow mb-3";
-        videoOutputArea.innerHTML = "";
-        videoOutputArea.appendChild(videoEl);
-      }
+          avatarContainer.innerHTML = `
+            <video id="assistant-video" class="rounded-circle" style="max-width: 200px;" autoplay loop muted>
+              <source src="${videoUrl}" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          `;
+          console.log("✅ Avatar replaced with video:", videoUrl);
+        }
+
+        if (++attempts >= 400) { // max 60 attempts (~60s)
+          clearInterval(intervalId);
+          console.warn("⏱️ Video not ready after waiting.");
+        }
+      }, 1000);
     } catch (err) {
-      console.error("Video generation failed:", err);
+      console.error("Error polling for video:", err);
     }
   }
-});
