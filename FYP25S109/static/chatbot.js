@@ -250,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     formData.append("lang", lang);
     formData.append("gender", gender);
-
+    formData.append("source", "chatbot")
     const voiceRes = await fetch("/generate_voice_form", {
       method: "POST",
       body: formData
