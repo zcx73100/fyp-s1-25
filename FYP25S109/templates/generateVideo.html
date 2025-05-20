@@ -56,6 +56,12 @@
           <i class="fas fa-magic me-1"></i> Generate Voice
         </button>
       </form>
+      <div id="ttsPreview" class="mt-3" style="display: none;">
+      <h6>Preview:</h6>
+      <audio id="ttsAudio" controls class="w-100"></audio>
+      </div>
+
+    <input type="hidden" id="audioHidden" name="audio_id">
       <div id="gttsStatus" class="mt-3 alert" style="display: none;"></div>
     </div>
   </div>
