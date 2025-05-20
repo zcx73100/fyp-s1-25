@@ -136,8 +136,9 @@ document.addEventListener("DOMContentLoaded", () => {
     row.className = `message-row ${sender}`;
     const div = document.createElement("div");
     div.className = `message-${sender}`;
-    const processed = processMarkdownBold(message);
-    div.innerHTML = `<div>${processed}</div>`;
+    const rawHTML = marked.parse(message);
+    const safeHTML = DOMPurify.sanitize(rawHTML);
+    div.innerHTML = `<div>${safeHTML}</div>`;
     row.appendChild(div);
 
     if (sender === "bot") {
