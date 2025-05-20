@@ -154,10 +154,12 @@ class AvatarVideoBoundary:
 
         # 🔧 Convert ObjectId to string for template
         for video in draft_videos:
-            video["video_id"] = str(video["video_id"])
-        for video in published_videos:
-            video["video_id"] = str(video["video_id"])
             video["_id"] = str(video["_id"])
+            # ✅ Corrected key
+            if "obj_video_id" in video:
+                video["video_id"] = str(video["obj_video_id"])
+            else:
+                video["video_id"] = None
 
         # Filter if search provided
         if search_query:
@@ -450,22 +452,32 @@ class AvatarVideoBoundary:
 
     @boundary.route("/check_video/<task_id>", methods=["GET"])
     def check_video(task_id):
-            result = mongo.db.tempvideo.find_one({"task_id": task_id})
-            if not result:
-                return jsonify(ready=False)
+        result = mongo.db.tempvideo.find_one({"task_id": task_id})
+        if not result:
+            return jsonify(ready=False)
 
-            if "error" in result:
-                return jsonify(ready=True, error=result["error"])
+        if "error" in result:
+            return jsonify(ready=True, error=result["error"])
 
-            return jsonify(ready=True, video_id=str(result["video_id"]))
+        video_id = result.get("video_id")  # ✅ Works for both chatbot and manual
+        if not video_id:
+            return jsonify(ready=False)
+
+        return jsonify(ready=True, video_id=str(video_id))
+
+
 
     
     @boundary.route("/stream_video/<video_id>")
     def stream_video(video_id):
         try:
+            # ✅ Remove ".mp4" suffix if present
+            if video_id.endswith(".mp4"):
+                video_id = video_id[:-4]
             file = get_fs().get(ObjectId(video_id))
             return send_file(file, mimetype="video/mp4", as_attachment=False)
         except Exception as e:
+            print(f"❌ Error streaming video {video_id}: {e}")
             return f"Video not found: {e}", 404
 
     @boundary.route("/generate_video_page", methods=["GET"])
