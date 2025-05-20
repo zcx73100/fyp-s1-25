@@ -1,34 +1,34 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2 class="text-center">Choose Your Avatar Assistant</h2>
-  <div class="row">
-    {% for avatar in avatars %}
-      <div class="col-md-3 text-center">
-        <div class="card mb-4">
-          <img src="data:image/png;base64,{{ avatar.image_data }}" class="card-img-top" alt="{{ avatar.avatarname }}">
-          <div class="card-body">
-            <h5 class="card-title">{{ avatar.avatarname }}</h5>
-            {% if avatar.username == user_info.username %}
-              <span class="badge bg-info">Your Upload</span>
-            {% else %}
-              <span class="badge bg-secondary">Admin</span>
-            {% endif %}
-            {% if avatar.video_id %}
-              <video class="w-100 mt-2" controls>
-                <source src="{{ url_for('boundary.stream_video', video_id=avatar.video_id) }}" type="video/mp4">
-                Your browser does not support the video tag.
-              </video>
-            {% endif %}
-            <form method="POST" class="mt-2">
-              <input type="hidden" name="avatar_id" value="{{ avatar._id }}">
-              <button type="submit" class="btn btn-primary btn-sm">Select</button>
-            </form>
-          </div>
+<div class="container mt-5">
+  <h2 class="text-center mb-4">🧠 Change Your Assistant Avatar + Voice</h2>
+
+  <form method="POST" action="{{ url_for('chatbot.assign_avatar') }}">
+    <div class="row justify-content-center mb-4">
+      {% for avatar in avatars %}
+        <div class="col-md-3 text-center mb-4">
+          <label>
+            <input type="radio" name="avatar_id" value="{{ avatar._id }}" required>
+            <img src="data:image/png;base64,{{ avatar.image_data }}" class="img-fluid rounded-circle" style="max-height: 150px;" />
+            <div class="mt-2">{{ avatar.avatarname or "Unnamed" }}</div>
+          </label>
         </div>
-      </div>
-    {% endfor %}
-  </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group text-center mb-4">
+      <label for="tts_voice"><strong>Select TTS Voice:</strong></label>
+      <select name="tts_voice" id="tts_voice" class="form-control mx-auto" style="max-width: 300px;" required>
+        {% for voice in tts_options %}
+          <option value="{{ voice }}">{{ voice }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="text-center">
+      <button type="submit" class="btn btn-success px-4 py-2">✅ Save Changes</button>
+    </div>
+  </form>
 </div>
 {% endblock %}

@@ -3,56 +3,50 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h1 class="text-center">Welcome to AI-NTERACTIVE</h1>
-    <h2 class="text-center mb-5">To get started, choose your talking assistant</h2>
-    <h3 class="text-center mb-5">Hover and preview your candidates for your future assistant!</h3>
-    <h4 class="text-center mb-5">Don't worry, you can still change in your settings!</h4>
+  <h2 class="text-center mb-4">🎤 Welcome to AI-NTERACTIVE</h2>
+  <h4 class="text-center mb-5">Choose your assistant avatar and voice to get started</h4>
+
+  <form method="POST" action="{{ url_for('chatbot.assign_avatar') }}">
     <div class="row">
-        {% for avatar in avatars %}
-        <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
-            <div class="avatar-card text-center position-relative">
-                <!-- Avatar Image (always visible) -->
-                <div class="avatar-image-container">
-                    <img
-                        src="data:image/png;base64,{{ avatar.image_data }}"
-                        alt="{{ avatar.avatarname }}"
-                        class="avatar-showcase-img img-fluid"
-                    />
-                
-                    <!-- Avatar Video (shown on hover) -->
-                    {% if avatar.video_id %}
-                    <div class="avatar-video-container">
-                        <video class="avatar-showcase-video" controls>
-                            <source src="{{ url_for('boundary.serve_published_video', file_id=avatar.video_id) }}" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-                    {% else %}
-                    <div class="no-video-placeholder">
-                        <p class="text-white">No video available</p>
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <!-- Avatar Name and Button -->
-                <div class="avatar-info p-2">
-                    
-                    <h5 class="mt-2">{{ avatar.avatarname }}</h5>
-                    <button class="btn btn-primary mt-2 select-avatar-btn" 
-                            data-avatar-id="{{ avatar.avatar_id }}">
-                        Select
-                    </button>
-                </div>
-            </div>
-        </div>
+      {% for avatar in avatars %}
+      <div class="col-sm-6 col-md-4 col-lg-3 mb-4 text-center">
+        <label>
+          <input type="radio" name="avatar_id" value="{{ avatar.avatar_id }}" required>
+          <img src="data:image/png;base64,{{ avatar.image_data }}" class="img-fluid rounded-circle" style="max-height: 150px;" />
+          <div class="mt-2">{{ avatar.avatarname }}</div>
+        </label>
+        {% if avatar.video_id %}
+        <video class="mt-2" controls style="max-width: 100%;">
+          <source src="{{ url_for('boundary.serve_published_video', file_id=avatar.video_id) }}" type="video/mp4">
+        </video>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group text-center mb-4">
+      <label for="tts_voice"><strong>Select TTS Voice:</strong></label>
+      <select name="tts_voice" id="tts_voice" class="form-control mx-auto" style="max-width: 300px;" required>
+        {% for voice in tts_options %}
+        <option value="{{ voice }}">{{ voice }}</option>
         {% endfor %}
-        <div class="col-12 text-center mt-4">
-            <form action="{{ url_for('boundary.set_first_time_login_false') }}" method="POST">
-                <button type="submit" class="btn btn-success">Skip for now</button>
-            </form>
-            <p class="text-muted mt-2">You can always select an assistant later from your settings.</p>
-        </div>
+      </select>
+    </div>
+
+    <div class="text-center">
+      <button type="submit" class="btn btn-success px-4 py-2">✅ Save Assistant</button>
+    </div>
+  </form>
+
+  <div class="text-center mt-4">
+    <form action="{{ url_for('boundary.set_first_time_login_false') }}" method="POST">
+      <button type="submit" class="btn btn-outline-secondary">Skip for now</button>
+    </form>
+    <p class="text-muted mt-2">You can always select your assistant later from settings.</p>
+  </div>
 </div>
+
+
 
 <style>
     .avatar-card {
@@ -112,43 +106,5 @@
         padding: 15px;
     }
 </style>
-<script>
-    document.querySelectorAll('.select-avatar-btn').forEach(button => {
-        button.addEventListener('click', async () => {
-            const avatarId = button.getAttribute('data-avatar-id');
-            console.log('Attempting to select avatar:', avatarId);
-            
-            try {
-                const response = await fetch(`/select_avatar/${avatarId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ avatar_id: avatarId })
-                });
-
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                console.log('Response data:', result);
-                
-                if (result.success) {
-                    alert('Avatar selected successfully!');
-                    // Optionally redirect or update UI
-                } else {
-                    alert('Failed to select avatar: ' + (result.message || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error selecting avatar:', error);
-                alert('Error selecting avatar. Check console for details.');
-            }
-        });
-    });
-</script>
 
 {% endblock %}
