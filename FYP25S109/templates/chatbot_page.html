@@ -36,25 +36,30 @@
 
   <!-- Main Chat Area -->
   <div id="main-chat" class="flex-grow-1 d-flex flex-column p-4">
+
+    <!-- Persistent Avatar -->
+    {% if assistant_avatar_id %}
+    <div id="assistant-header" class="d-flex justify-content-center mb-4">
+      <img id="assistant-avatar"
+          src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"
+          class="rounded-circle shadow-sm"
+          style="max-width: 150px;" />
+    </div>
+    {% endif %}
+
+    <!-- Chat Title and Actions -->
     <div id="chat-actions" class="d-none mb-2">
       <h4 contenteditable="true" id="chat-title" class="mb-3 border-bottom pb-1">{{ current_chat_title or "Untitled Chat" }}</h4>
     </div>
 
-    <div id="welcome-message" class="text-center mt-5 flex-grow-1 d-flex flex-column align-items-center justify-content-center">
+    <!-- Welcome -->
+    <div id="welcome-message" class="text-center mt-5">
       <h2>Welcome, {{ user_info.name }}!</h2>
       <p>Select a chat or start a new one to begin.</p>
-
-      {% if assistant_avatar_id %}
-      <div id="avatar-container" style="text-align: center;">
-        <img id="assistant-avatar" 
-            src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"
-            class="img-fluid rounded-circle"
-            style="max-width: 200px;" />
-      </div>
-      {% else %}
-      <p><em>No assistant avatar selected yet.</em></p>
-      {% endif %}
     </div>
+
+  <!-- Messages -->
+  <div id="messages-container" class="chat-window d-none"></div>
 
     <!-- Messages Area -->
     <div id="messages-container" class="chat-window d-none"></div>
