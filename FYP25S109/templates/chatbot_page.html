@@ -4,73 +4,72 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
 {% endblock %}
 {% block content %}
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-md-3 border-end" id="sidebar-wrapper">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="text-primary">💬 Your Chats</h5>
-        <button id="toggle-sidebar" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></button>
-      </div>
-
-      <div class="mb-3">
-        <input type="text" id="chat-search" class="form-control" placeholder="Search chats...">
-      </div>
-
-      <div id="chat-list" class="list-group mb-3">
-        {% for chat in chatbot_chats %}
-        <div class="chat-item list-group-item list-group-item-action" data-chat-id="{{ chat._id }}" data-title="{{ chat.title }}">
-          <div class="d-flex w-100 justify-content-between">
-            <h6 class="mb-1">{{ chat.title }}</h6>
-            <small class="text-muted">{{ chat.updated_at.strftime('%H:%M') if chat.updated_at else '' }}</small>
-          </div>
-          <p class="mb-1 text-truncate">{{ chat.last_message or "No messages yet." }}</p>
-        </div>
-        {% endfor %}
-      </div>
-
-      <div class="d-flex justify-content-between">
-        <button id="new-chat-btn" class="btn btn-primary btn-sm w-50 me-1">➕ New</button>
-        <button id="delete-chat-btn" class="btn btn-danger btn-sm w-50">🗑️ Delete</button>
-      </div>
+<div class="d-flex" style="height: 100vh;">
+  <div id="sidebar-wrapper">
+    <!-- Everything currently inside your sidebar -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="text-primary">💬 Your Chats</h5>
+      <button id="toggle-sidebar" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></button>
     </div>
 
-    <!-- Main Chat Area -->
-    <div class="col-md-9">
-      <div id="chat-actions" class="d-none mb-2">
-        <h4 contenteditable="true" id="chat-title" class="mb-3 border-bottom pb-1">{{ current_chat_title or "Untitled Chat" }}</h4>
+    <div class="mb-3">
+      <input type="text" id="chat-search" class="form-control" placeholder="Search chats...">
+    </div>
+
+    <div id="chat-list" class="list-group mb-3">
+      {% for chat in chatbot_chats %}
+      <div class="chat-item list-group-item list-group-item-action" data-chat-id="{{ chat._id }}" data-title="{{ chat.title }}">
+        <div class="d-flex w-100 justify-content-between">
+          <h6 class="mb-1">{{ chat.title }}</h6>
+          <small class="text-muted">{{ chat.updated_at.strftime('%H:%M') if chat.updated_at else '' }}</small>
+        </div>
+        <p class="mb-1 text-truncate">{{ chat.last_message or "No messages yet." }}</p>
       </div>
+      {% endfor %}
+    </div>
 
-      <div id="welcome-message" class="text-center mt-5">
-        <h2>Welcome, {{ user_info.name }}!</h2>
-        <p>Select a chat or start a new one to begin.</p>
+    <div class="d-flex justify-content-between">
+      <button id="new-chat-btn" class="btn btn-primary btn-sm w-50 me-1">➕ New</button>
+      <button id="delete-chat-btn" class="btn btn-danger btn-sm w-50">🗑️ Delete</button>
+    </div>
+  </div>
 
-        {% if assistant_avatar_id %}
-       <div id="avatar-container" style="text-align: center;">
+  <!-- Main Chat Area -->
+  <div id="main-chat" class="flex-grow-1 d-flex flex-column p-4">
+    <div id="chat-actions" class="d-none mb-2">
+      <h4 contenteditable="true" id="chat-title" class="mb-3 border-bottom pb-1">{{ current_chat_title or "Untitled Chat" }}</h4>
+    </div>
+
+    <div id="welcome-message" class="text-center mt-5 flex-grow-1 d-flex flex-column align-items-center justify-content-center">
+      <h2>Welcome, {{ user_info.name }}!</h2>
+      <p>Select a chat or start a new one to begin.</p>
+
+      {% if assistant_avatar_id %}
+      <div id="avatar-container" style="text-align: center;">
         <img id="assistant-avatar" 
             src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"
             class="img-fluid rounded-circle"
             style="max-width: 200px;" />
       </div>
-
-        {% else %}
-        <p><em>No assistant avatar selected yet.</em></p>
-        {% endif %}
-      </div>
-
-      <!-- Messages Area -->
-      <div id="messages-container" class="chat-window d-none"></div>
-
-      <!-- Input Form -->
-      <form id="chat-form" class="mt-3 d-flex align-items-center">
-        <textarea id="message-input" class="form-control me-2" rows="2" placeholder="Type your message..." disabled></textarea>
-        <button class="btn btn-primary" type="submit" disabled>Send</button>
-      </form>
-
-      <!-- Output Area -->
-      <div id="video-output-area" class="mt-4"></div>
+      {% else %}
+      <p><em>No assistant avatar selected yet.</em></p>
+      {% endif %}
     </div>
+
+    <!-- Messages Area -->
+    <div id="messages-container" class="chat-window d-none"></div>
+
+    <!-- Input Form -->
+    <form id="chat-form" class="mt-3 d-flex align-items-center">
+      <textarea id="message-input" class="form-control me-2" rows="2" placeholder="Type your message..." disabled></textarea>
+      <button class="btn btn-primary" type="submit" disabled>Send</button>
+    </form>
+
+    <!-- Output Area -->
+    <div id="video-output-area" class="mt-4"></div>
   </div>
 </div>
+
 
 <!-- MathJax for LaTeX -->
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
