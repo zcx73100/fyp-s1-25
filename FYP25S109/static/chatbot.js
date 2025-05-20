@@ -50,9 +50,9 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ title: "New Chat" })
       });
       const data = await res.json();
-      loadChat(data.chat_id, data.title);
+
       const item = document.createElement("div");
-      item.className = "chat-item list-group-item list-group-item-action active";
+      item.className = "chat-item list-group-item list-group-item-action";
       item.dataset.chatId = data.chat_id;
       item.dataset.title = data.title;
       item.innerHTML = `<div class="d-flex w-100 justify-content-between">
@@ -60,13 +60,16 @@ document.addEventListener("DOMContentLoaded", () => {
                           <small>${new Date().toLocaleTimeString()}</small>
                         </div>
                         <p class="mb-1 text-truncate">New chat started</p>`;
+
       chatList.prepend(item);
       document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
       item.classList.add("active");
+      item.click();  // ✅ Let the existing sidebar click handler handle loading
     } catch {
       appendMessage("bot", "Failed to create new chat.");
     }
   });
+
 
   deleteChatBtn?.addEventListener("click", async () => {
     if (!currentChatId || !confirm("Are you sure you want to delete this chat?")) return;
