@@ -5,6 +5,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   const chatForm = document.getElementById('chat-form');
+  if (!chatForm) return;
   const messageInput = document.getElementById('message-input');
   const messagesContainer = document.getElementById('messages-container');
   const welcomeMessage = document.getElementById('welcome-message');
@@ -233,42 +234,85 @@ document.addEventListener("DOMContentLoaded", () => {
     speechSynthesis.speak(utterance);
   }
 
-  async function checkAndReplaceAvatarWithVideo(taskId) {
-    try {
-      const checkUrl = `/check_video/${taskId}`;
-      let attempts = 0;
+  async function autoGenerateVideo(text) {
+  try {
+    const formData = new FormData();
+    formData.append("text", text);
 
-      const intervalId = setInterval(async () => {
-        const res = await fetch(checkUrl);
-        const data = await res.json();
+    const voice = window.selectedTTSVoice || "female_en";
+    const lang = voice.includes("jp") ? "ja" :
+                 voice.includes("id") ? "id" :
+                 voice.includes("es") ? "es" :
+                 voice.includes("fr") ? "fr" :
+                 voice.includes("de") ? "de" :
+                 voice.includes("it") ? "it" : "en";
+    const gender = voice.includes("female") ? "female" : "male";
 
-        if (data.ready) {
-          clearInterval(intervalId);
+    formData.append("lang", lang);
+    formData.append("gender", gender);
 
-          if (data.error) {
-            console.error("❌ Video generation failed:", data.error);
-            return;
-          }
+    const voiceRes = await fetch("/generate_voice_form", {
+      method: "POST",
+      body: formData
+    });
 
-          const videoUrl = `/stream_video/${data.video_id}`;
-          const avatarContainer = document.getElementById("avatar-container");
-          if (!avatarContainer) return;
+    const { audio_id } = await voiceRes.json();
+    if (!audio_id) return;
 
-          avatarContainer.innerHTML = `
-            <video id="assistant-video" class="rounded-circle" style="max-width: 200px;" autoplay loop muted>
-              <source src="${videoUrl}" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          `;
-          console.log("✅ Avatar replaced with video:", videoUrl);
-        }
+    const videoRes = await fetch(`/generate_video_for_chatbot/${window.ASSISTANT_AVATAR_ID}/${audio_id}`, {
+      method: "POST"
+    });
 
-        if (++attempts >= 400) { // max 60 attempts (~60s)
-          clearInterval(intervalId);
-          console.warn("⏱️ Video not ready after waiting.");
-        }
-      }, 1000);
-    } catch (err) {
-      console.error("Error polling for video:", err);
+    const { success, task_id } = await videoRes.json();
+    if (success && task_id) {
+      checkAndReplaceAvatarWithVideo(task_id); // ✅ This is what swaps avatar → video
+    } else {
+      console.warn("❌ Video generation failed.");
     }
+  } catch (err) {
+    console.error("Error during autoGenerateVideo:", err);
   }
+}
+
+  // This function checks if video is ready and updates the avatar accordingly
+async function checkAndReplaceAvatarWithVideo(taskId) {
+  try {
+    const checkUrl = `/check_video/${taskId}`;
+    let attempts = 0;
+
+    const intervalId = setInterval(async () => {
+      const res = await fetch(checkUrl);
+      const data = await res.json();
+
+      if (data.ready) {
+        clearInterval(intervalId);
+
+        if (data.error) {
+          console.error("❌ Video generation failed:", data.error);
+          return;
+        }
+
+        const videoUrl = `/stream_video/${data.video_id}`;
+        const avatarContainer = document.getElementById("avatar-container");
+        if (!avatarContainer) return;
+
+        avatarContainer.innerHTML = `
+          <video id="assistant-video" class="rounded-circle" style="max-width: 200px;" autoplay loop muted>
+            <source src="${videoUrl}" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        `;
+        console.log("✅ Avatar replaced with video:", videoUrl);
+      }
+
+      if (++attempts >= 60) { // max 60 attempts (~60s)
+        clearInterval(intervalId);
+        console.warn("⏱️ Video not ready after waiting.");
+      }
+    }, 1000);
+  } catch (err) {
+    console.error("Error polling for video:", err);
+  }
+}
+
+});
