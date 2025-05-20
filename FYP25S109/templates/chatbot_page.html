@@ -1,147 +1,82 @@
 {% extends "base.html" %}
-
-{% block title %}Chat with EduMate{% endblock %}
-
-{% block head %}
-  {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
-  <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
-
+{% block title %}Chatbot{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
 {% endblock %}
 {% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-md-3 border-end" id="sidebar-wrapper">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="text-primary">💬 Your Chats</h5>
+        <button id="toggle-sidebar" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></button>
+      </div>
 
-<span id="selected-voice" data-voice="{{ user_info.assistant.tts_voice }}"></span>
+      <div class="mb-3">
+        <input type="text" id="chat-search" class="form-control" placeholder="Search chats...">
+      </div>
 
-
-<!-- MathJax Configuration -->
-<script>
-    MathJax = {
-        tex: {
-            inlineMath: [['$', '$'], ['\\(', '\\)']],
-            displayMath: [['$$', '$$'], ['\\[', '\\]']],
-            processEscapes: true,
-            packages: {'[+]': ['ams', 'color', 'boldsymbol']}
-        },
-        options: {
-            ignoreHtmlClass: 'tex2jax_ignore',
-            processHtmlClass: 'tex2jax_process'
-        },
-        svg: {
-            fontCache: 'global',
-            scale: 1.1
-        },
-        chtml: {
-            scale: 1.1
-        }
-    };
-</script>
-
-  
-<div class="container mt-4">
-    <div class="d-flex position-relative" id="chat-container">
-        <!-- Sidebar -->
-        <div id="sidebar-wrapper" class="pe-3">
-            <div class="card shadow h-100">
-            
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Chats</h5>
-                    <input type="text" id="chat-search" class="form-control mb-2" placeholder="Search chats...">
-                    <button id="new-chat-btn" class="btn btn-sm btn-primary new-chat-btn">
-                        <i class="fas fa-plus"></i> New
-                    </button>
-                </div>
-                <div class="card-body p-0" style="height: 400px; overflow-y: auto;">
-                    <div id="chat-list" class="list-group list-group-flush">
-                        {% for chat in chatbot_chats %}
-                            <div class="chat-item list-group-item list-group-item-action" 
-                                 data-chat-id="{{ chat._id }}" 
-                                 data-title="{{ chat.title }}">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ chat.title }}</h6>
-                                </div>
-                                <p class="mb-1 text-truncate">{{ chat.description|default('') }}</p>
-                            </div>
-                        {% endfor %}
-                        {% if not chatbot_chats %}
-                            <div class="text-center p-3 text-muted">
-                                No chats available. Start a new chat!
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+      <div id="chat-list" class="list-group mb-3">
+        {% for chat in chatbot_chats %}
+        <div class="chat-item list-group-item list-group-item-action" data-chat-id="{{ chat._id }}" data-title="{{ chat.title }}">
+          <div class="d-flex w-100 justify-content-between">
+            <h6 class="mb-1">{{ chat.title }}</h6>
+            <small class="text-muted">{{ chat.updated_at.strftime('%H:%M') if chat.updated_at else '' }}</small>
+          </div>
+          <p class="mb-1 text-truncate">{{ chat.last_message or "No messages yet." }}</p>
         </div>
+        {% endfor %}
+      </div>
 
-        <!-- Toggle Sidebar Button -->
-        <button id="toggle-sidebar" class="btn btn-sm btn-outline-secondary" title="Toggle sidebar">
-            <i class="fas fa-chevron-left"></i>
-        </button>
+      <div class="d-flex justify-content-between">
+        <button id="new-chat-btn" class="btn btn-primary btn-sm w-50 me-1">➕ New</button>
+        <button id="delete-chat-btn" class="btn btn-danger btn-sm w-50">🗑️ Delete</button>
+      </div>
+    </div>
 
-        
+    <!-- Main Chat Area -->
+    <div class="col-md-9">
+      <div id="chat-actions" class="d-none mb-2">
+        <h4 contenteditable="true" id="chat-title" class="mb-3 border-bottom pb-1">{{ current_chat_title or "Untitled Chat" }}</h4>
+      </div>
 
-        <!-- Main Chat Area -->
-        <div class="flex-grow-1" id="main-chat">
-        <div class="card shadow h-100 d-flex flex-column">
-            
-            <!-- Header -->
-            <div class="card-header d-flex justify-content-between align-items-center">
-            <div class="flex-grow-1 overflow-hidden">
-                <h5 id="chat-title" class="mb-0 text-truncate" contenteditable="true" spellcheck="false" title="Click to edit chat title">Select a chat or start a new one</h5>
-            </div>
-            <div id="chat-actions" class="ms-2 d-none">
-                <button id="delete-chat-btn" class="btn btn-sm btn-outline-danger" title="Delete chat">
-                <i class="fas fa-trash"></i>
-                </button>
-            </div>
-            </div>
+      <div id="welcome-message" class="text-center mt-5">
+        <h2>Welcome, {{ user_info.name }}!</h2>
+        <p>Select a chat or start a new one to begin.</p>
 
-            <!-- ✅ Avatar/Video Block -->
-            <div id="video-wrapper" class="d-flex justify-content-center align-items-center py-3">
-            <div id="video-output-area" class="text-center">
-                <!-- Avatar Still Image -->
-                <img
-                id="assistant-avatar-placeholder"
-                src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"               
-                class="rounded shadow mb-3"
-                style="max-width: 300px;"
-                >
-            </div>
-            </div>
+        {% if assistant_avatar_id %}
+        <img id="assistant-avatar-placeholder"
+             src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"
+             class="rounded shadow mb-3"
+             style="max-width: 300px;">
+        {% else %}
+        <p><em>No assistant avatar selected yet.</em></p>
+        {% endif %}
+      </div>
 
-            <!-- ✅ Chat Box with messages -->
-            <div class="card-body p-3 flex-grow-1 overflow-y-auto d-flex flex-column" id="chat-box">
-            <div id="welcome-message" class="text-center text-muted h-100 d-flex flex-column justify-content-center">
-                <i class="fas fa-comments fa-4x mb-3"></i>
-                <h4>Welcome to EduMate!</h4>
-                <p>Select a chat from the sidebar or start a new conversation</p>
-            </div>
-            <div id="messages-container" class="d-none"></div>
-            </div>
+      <!-- Messages Area -->
+      <div id="messages-container" class="chat-window d-none"></div>
 
-            <!-- ✅ Footer Chat Form -->
-            <div class="card-footer">
-            <form id="chat-form" class="d-flex">
-                <input type="text" id="message-input" class="form-control me-2" 
-                    placeholder="Type your message..." required disabled>
-                <button type="submit" class="btn btn-primary" disabled>
-                <i class="fas fa-paper-plane"></i> Send
-                </button>
-            </form>
-            </div>
-            
-        </div>
-        </div>
+      <!-- Input Form -->
+      <form id="chat-form" class="mt-3 d-flex align-items-center">
+        <textarea id="message-input" class="form-control me-2" rows="2" placeholder="Type your message..." disabled></textarea>
+        <button class="btn btn-primary" type="submit" disabled>Send</button>
+      </form>
 
+      <!-- Output Area -->
+      <div id="video-output-area" class="mt-4"></div>
+    </div>
+  </div>
+</div>
 
-
-
-<!-- Load MathJax 3 -->
+<!-- MathJax for LaTeX -->
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-  <script>
-    window.ASSISTANT_AVATAR_ID = "{{ assistant_avatar_id }}";
-    window.selectedTTSVoice    = "{{ assistant_tts_voice }}";
-  </script>
-
-
+<!-- Custom Chatbot JS -->
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+<script>
+  // Setup global variables
+  window.ASSISTANT_AVATAR_ID = "{{ assistant_avatar_id }}";
+  window.selectedTTSVoice = "{{ assistant_tts_voice }}";
+</script>
 {% endblock %}
