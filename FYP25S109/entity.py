@@ -104,7 +104,10 @@ class UserAccount:
                 "status": self.status,
                 "first_time_login": True,
                 "profile_pic": profile_pic_id,
-                "assistant": ""
+                "assistant": {
+                    "avatar_id": None,
+                    "tts_voice": "female_en"
+                }
             }
 
             # 5. Insert into MongoDB
@@ -431,7 +434,7 @@ class GenerateVideoEntity:
             for video in videos:
                 video_list.append({
                     "_id": video["_id"],
-                    "video_id": str(video["video_id"]),
+                    "video_id": str(video.get("video_id", "")),
                     "title": video.get("title", "Untitled"),  # Include title
                     "created_at": video["created_at"],
                     "status": video["status"]

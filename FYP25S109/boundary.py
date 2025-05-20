@@ -366,15 +366,15 @@ class AvatarVideoBoundary:
     # Generate Video for Chatbot
     @boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
     def generate_video_for_chatbot(avatar_id, audio_id):
-        from bson.objectid import ObjectId
-        from flask import jsonify, session
+        from bson import ObjectId
+        import threading, io, os, requests
+        from datetime import datetime
 
         username = session.get("username")
         if not username:
             return jsonify({"success": False, "error": "Not logged in"}), 401
 
         try:
-            # ✅ Validate Avatar
             avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
             if not avatar_doc:
                 return jsonify({"success": False, "error": "Avatar not found"}), 404
@@ -383,30 +383,73 @@ class AvatarVideoBoundary:
             if not file_id:
                 return jsonify({"success": False, "error": "Avatar missing file_id"}), 400
 
-            # ✅ Call SadTalker via Controller
-            controller = GenerateVideoController()
-            video_gridfs_id = controller.generate_video(
-                text="",  # Not needed for chatbot
-                avatar_id=file_id,
-                audio_id=audio_id,
-                title=None
-            )
+            task_id = str(uuid.uuid4())
 
-            if not video_gridfs_id:
-                return jsonify({"success": False, "error": "Video generation failed"}), 500
+            def background_video_generation():
+                try:
+                    fs = get_fs()
+
+                    # Retrieve avatar image and audio from GridFS
+                    img = fs.get(ObjectId(file_id))
+                    aud = fs.get(ObjectId(audio_id))
+
+                    files = {
+                        "image_file": (img.filename, img.read(), img.content_type),
+                        "audio_file": (aud.filename, aud.read(), aud.content_type)
+                    }
+
+                    SADTALKER_API = os.getenv("SADTALKER_API_URL")
+                    if not SADTALKER_API:
+                        raise RuntimeError("SADTALKER_API_URL is not set.")
+
+                    resp = requests.post(SADTALKER_API, files=files, stream=True, timeout=300)
+                    resp.raise_for_status()
+
+                    # Write the streamed response to memory buffer
+                    buf = io.BytesIO()
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        buf.write(chunk)
+                    buf.seek(0)
+
+                    # Save video to GridFS
+                    gridfs_id = fs.put(buf, filename="Chatbot Reply.mp4", content_type="video/mp4")
+
+                    # Save metadata
+                    mongo.db.tempvideo.insert_one({
+                        "task_id": task_id,
+                        "username": username,
+                        "video_id": gridfs_id,
+                        "created_at": datetime.utcnow(),
+                        "source": "chatbot",
+                        "is_published": False
+                    })
+
+                except Exception as err:
+                    print(f"[Chatbot Video] ❌ Error: {err}")
+                    mongo.db.tempvideo.insert_one({
+                        "task_id": task_id,
+                        "username": username,
+                        "error": str(err),
+                        "created_at": datetime.utcnow(),
+                        "source": "chatbot",
+                        "status": "failed"
+                    })
+
+            threading.Thread(target=background_video_generation, daemon=True).start()
 
             return jsonify({
                 "success": True,
-                "video_url": f"/stream_video/{video_gridfs_id}"
-            }), 200
+                "task_id": task_id
+            })
 
         except Exception as e:
             print("❌ Error in generate_video_for_chatbot:", e)
             return jsonify({"success": False, "error": str(e)}), 500
 
 
-        @boundary.route("/check_video/<task_id>", methods=["GET"])
-        def check_video(task_id):
+
+    @boundary.route("/check_video/<task_id>", methods=["GET"])
+    def check_video(task_id):
             result = mongo.db.tempvideo.find_one({"task_id": task_id})
             if not result:
                 return jsonify(ready=False)
@@ -1119,30 +1162,39 @@ class LoginBoundary:
 
         return render_template("login.html")
     
-    @boundary.route('/select_avatar/<avatar_id>', methods=['POST'])
-    def select_avatar(avatar_id):
-        print("[DEBUG] Avatar ID from URL:", avatar_id)
-        
+    @boundary.route('/select_avatar', methods=['POST'])
+    def select_avatar():
         username = session.get('username')
         if not username:
             return jsonify(success=False, message='User not logged in'), 401
 
+        avatar_id = request.form.get("avatar_id")
+        tts_voice = request.form.get("tts_voice", "female_en")  # default fallback
+
+        if not avatar_id:
+            return jsonify(success=False, message='Missing avatar_id'), 400
+
         try:
-            # Store the avatar selection in the session and DB
-            session['selected_avatar'] = avatar_id
-            result = mongo.db.useraccount.update_one(
+            avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+            if not avatar_doc:
+                return jsonify(success=False, message='Avatar not found'), 404
+
+            assistant_data = {
+                "avatar_id": ObjectId(avatar_id),
+                "tts_voice": tts_voice
+            }
+
+            mongo.db.useraccount.update_one(
                 {"username": username},
-                {"$set": {"assistant": avatar_id}}
+                {"$set": {"assistant": assistant_data}}
             )
 
-            if result.modified_count == 1:
-                return redirect(url_for('boundary.home'))
-            else:
-                return jsonify(success=False, message='Failed to update user record'), 500
+            return redirect(url_for('boundary.home'))
 
         except Exception as e:
-            print("[ERROR] Failed to select avatar:", str(e))
-            return jsonify(success=False, message='Server error'), 500
+            print("❌ Error in select_avatar:", e)
+            return jsonify(success=False, message="Internal server error"), 500
+
 
 
     

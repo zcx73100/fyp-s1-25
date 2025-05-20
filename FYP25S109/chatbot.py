@@ -99,7 +99,7 @@ class ChatbotBoundary:
                 {"username": username},
                 {"$set": {
                     "assistant": {
-                        "avatar_id": avatar_obj_id,
+                        "avatar_id": str(avatar_obj_id),
                         "tts_voice": tts_voice
                     }
                 }}
