@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Chatbot{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
 {% endblock %}
 {% block content %}
 <div class="container-fluid mt-4">
@@ -76,7 +76,7 @@
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <!-- Custom Chatbot JS -->
-<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+<script src="{{ url_for('static', filename='chatbot.js') }}"></script>
 <script>
   // Setup global variables
   window.ASSISTANT_AVATAR_ID = "{{ assistant_avatar_id }}";
