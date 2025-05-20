@@ -45,10 +45,13 @@
         <p>Select a chat or start a new one to begin.</p>
 
         {% if assistant_avatar_id %}
-        <img id="assistant-avatar-placeholder"
-             src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"
-             class="rounded shadow mb-3"
-             style="max-width: 300px;">
+       <div id="avatar-container" style="text-align: center;">
+        <img id="assistant-avatar" 
+            src="{{ url_for('boundary.stream_avatar', avatar_id=assistant_avatar_id) }}"
+            class="img-fluid rounded-circle"
+            style="max-width: 200px;" />
+      </div>
+
         {% else %}
         <p><em>No assistant avatar selected yet.</em></p>
         {% endif %}
