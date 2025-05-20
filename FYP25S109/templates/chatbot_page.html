@@ -74,12 +74,16 @@
 </div>
 
 
-<!-- MathJax for LaTeX -->
+<!-- MathJax -->
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-<!-- HTML sanitizer -->
+
+<!-- ✅ ADD THIS -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<!-- DOMPurify -->
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.3/dist/purify.min.js"></script>
 
-<!-- Custom Chatbot JS -->
+<!-- Chatbot -->
 <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
 <script>
   // Setup global variables
