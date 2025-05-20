@@ -293,19 +293,22 @@ async function checkAndReplaceAvatarWithVideo(taskId) {
         }
 
         const videoUrl = `/stream_video/${data.video_id}`;
-        const avatarContainer = document.getElementById("avatar-container");
-        if (!avatarContainer) return;
+        const avatarWrapper = document.getElementById("assistant-header");
+        if (!avatarWrapper) {
+          console.warn("⚠️ Could not find #assistant-header.");
+          return;
+        }
 
-        avatarContainer.innerHTML = `
-          <video id="assistant-video" class="rounded-circle" style="max-width: 200px;" autoplay loop muted>
+        avatarWrapper.innerHTML = `
+          <video id="assistant-video" class="rounded-circle shadow-sm" style="max-width: 150px;" autoplay loop muted>
             <source src="${videoUrl}" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         `;
-        console.log("✅ Avatar replaced with video:", videoUrl);
+        console.log("✅ Persistent avatar replaced with video:", videoUrl);
       }
 
-      if (++attempts >= 60) { // max 60 attempts (~60s)
+      if (++attempts >= 60) {
         clearInterval(intervalId);
         console.warn("⏱️ Video not ready after waiting.");
       }
