@@ -25,14 +25,22 @@ class ChatbotBoundary:
             return redirect("/login")
 
         user_info = mongo.db.useraccount.find_one({"username": username})
-        assistant_avatar_id = ""
-        assistant_tts_voice = "female_en"  # default value in case missing
+
+        assistant_avatar_id = None
+        assistant_tts_voice = "female_en"  # default fallback
+
+        assistant_avatar = None
 
         if user_info and "assistant" in user_info:
-            avatar_id = user_info["assistant"].get("avatar_id")
-            if avatar_id:
-                assistant_avatar_id = str(avatar_id)
-            assistant_tts_voice = user_info["assistant"].get("tts_voice", "female_en")
+            try:
+                assistant_obj_id = ObjectId(user_info["assistant"])
+                avatar_doc = mongo.db.avatar.find_one({"_id": assistant_obj_id})
+                if avatar_doc:
+                    assistant_avatar = avatar_doc
+                    assistant_avatar_id = str(assistant_obj_id)
+                    assistant_tts_voice = avatar_doc.get("tts_voice", "female_en")
+            except Exception as e:
+                print(f"[ChatbotPage] Error loading assistant avatar: {e}")
 
         chatbot_chats = list(mongo.db.chatbot_chats.find({"username": username}))
 
@@ -43,7 +51,7 @@ class ChatbotBoundary:
             assistant_avatar_id=assistant_avatar_id,
             assistant_tts_voice=assistant_tts_voice
         )
-    
+
     @chatbot.route("/chatbot/process", methods=["POST"])
     def chatbot_process():
         username = session.get("username")
