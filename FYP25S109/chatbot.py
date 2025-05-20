@@ -33,15 +33,24 @@ class ChatbotBoundary:
 
         if user_info and "assistant" in user_info:
             try:
-                assistant_obj_id = ObjectId(user_info["assistant"])
-                avatar_doc = mongo.db.avatar.find_one({"_id": assistant_obj_id})
-                if avatar_doc:
-                    assistant_avatar = avatar_doc
-                    assistant_avatar_id = str(assistant_obj_id)
-                    assistant_tts_voice = avatar_doc.get("tts_voice", "female_en")
+                assistant_data = user_info["assistant"]
+
+                # ✅ Expecting dictionary now
+                if isinstance(assistant_data, dict):
+                    avatar_id_raw = assistant_data.get("avatar_id")
+                    if avatar_id_raw:
+                        assistant_obj_id = ObjectId(avatar_id_raw)
+                        avatar_doc = mongo.db.avatar.find_one({"_id": assistant_obj_id})
+                        if avatar_doc:
+                            assistant_avatar = avatar_doc
+                            assistant_avatar_id = str(assistant_obj_id)
+                            assistant_tts_voice = assistant_data.get("tts_voice", "female_en")
+                else:
+                    print("[ChatbotPage] Unexpected assistant format:", assistant_data)
+
             except Exception as e:
                 print(f"[ChatbotPage] Error loading assistant avatar: {e}")
-
+                
         chatbot_chats = list(mongo.db.chatbot_chats.find({"username": username}))
 
         return render_template(

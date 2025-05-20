@@ -1162,38 +1162,35 @@ class LoginBoundary:
 
         return render_template("login.html")
     
-    @boundary.route('/select_avatar', methods=['POST'])
-    def select_avatar():
+    @boundary.route('/select_avatar/<avatar_id>', methods=['POST'])
+    def select_avatar(avatar_id):
         username = session.get('username')
         if not username:
             return jsonify(success=False, message='User not logged in'), 401
 
-        avatar_id = request.form.get("avatar_id")
-        tts_voice = request.form.get("tts_voice", "female_en")  # default fallback
-
-        if not avatar_id:
-            return jsonify(success=False, message='Missing avatar_id'), 400
+        tts_voice = request.form.get("tts_voice", "female_en")  # Default fallback
 
         try:
-            avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
-            if not avatar_doc:
-                return jsonify(success=False, message='Avatar not found'), 404
+            session['selected_avatar'] = avatar_id
 
-            assistant_data = {
-                "avatar_id": ObjectId(avatar_id),
-                "tts_voice": tts_voice
-            }
-
-            mongo.db.useraccount.update_one(
+            result = mongo.db.useraccount.update_one(
                 {"username": username},
-                {"$set": {"assistant": assistant_data}}
+                {"$set": {
+                    "assistant": {
+                        "avatar_id": str(avatar_id),
+                        "tts_voice": tts_voice
+                    }
+                }}
             )
 
-            return redirect(url_for('boundary.home'))
+            if result.modified_count == 1:
+                return redirect(url_for('boundary.home'))
+            else:
+                return jsonify(success=False, message='Failed to update user record'), 500
 
         except Exception as e:
-            print("❌ Error in select_avatar:", e)
-            return jsonify(success=False, message="Internal server error"), 500
+            print("[ERROR] Failed to select avatar:", str(e))
+            return jsonify(success=False, message='Server error'), 500
 
 
 
@@ -1393,10 +1390,16 @@ class ChangeAssistantBoundary:
 
         if request.method == 'POST':
             new_avatar_id = request.form.get("avatar_id")
+            tts_voice = request.form.get("tts_voice", "female_en")
+
             if new_avatar_id:
+                assistant_data = {
+                    "avatar_id": ObjectId(new_avatar_id),
+                    "tts_voice": tts_voice
+                }
                 update_result = mongo.db.useraccount.update_one(
                     {"username": username},
-                    {"$set": {"assistant": new_avatar_id}}
+                    {"$set": {"assistant": assistant_data}}
                 )
                 if update_result.modified_count > 0:
                     flash("Assistant updated successfully!", category='success')
@@ -1406,6 +1409,8 @@ class ChangeAssistantBoundary:
                 flash("No avatar selected.", category='error')
 
             return redirect(url_for('boundary.accDetails'))
+
+        
 
         # Fetch avatars uploaded by admins and the user
         admin_users = list(mongo.db.useraccount.find({"role": "Admin"}, {"username": 1}))
@@ -1422,7 +1427,14 @@ class ChangeAssistantBoundary:
                 avatars.append(avatar)
                 unique_ids.add(avatar["_id"])
 
-        return render_template("changeAssistant.html", avatars=avatars, user_info=user_info)
+        tts_options = [
+                "female_en", "male_en",
+                "female_es", "male_es",
+                "female_fr", "male_fr",
+                "female_id", "male_id",
+                "female_ja", "male_ja"
+            ]
+        return render_template("changeAssistant.html", avatars=avatars, user_info=user_info, tts_options=tts_options)
 
     @boundary.route('/set_first_time_login_false', methods=['POST'])
     def set_first_time_login_false():   
