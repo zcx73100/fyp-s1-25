@@ -399,23 +399,23 @@ flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.9);
+  background: transparent;         /* ✅ Transparent */
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 160px;           /* ⬅️ Fix here */
+  min-height: 200px;   
   padding: 10px 0;
   margin-bottom: 1rem;
   overflow: visible;           /* ⬅️ Add this */
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  backdrop-filter: none;           /* ✅ Optional: remove blur */
+  box-shadow: none;
 }
 
 
 #assistant-header img,
 #assistant-header video {
-  width: 120px;                /* ⬅️ Fix here */
-  height: 120px;
+  width: 160px;                /* ⬅️ Fix here */
+  height: 160px;
   object-fit: cover;
   border-radius: 50%;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
