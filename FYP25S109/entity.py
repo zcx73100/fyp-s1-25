@@ -460,11 +460,11 @@ class Avatar:
 
     def save_image(self, image_binary, filename):
         try:
-            from rembg import remove
-            fs = get_fs()
-
-            # ✅ Remove background from image
-            image_no_bg = remove(image_binary)
+            
+            from rembg import remove, new_session            
+            
+            session_rembg = new_session(model_name="u2netp")
+            image_no_bg = remove(image_binary, session=session_rembg)
 
             # ✅ Open the cleaned image
             image = Image.open(BytesIO(image_no_bg)).convert("RGBA")
@@ -480,6 +480,7 @@ class Avatar:
             resized_image.save(output, format="PNG")
             output.seek(0)
 
+            fs = get_fs()
             file_id = fs.put(output, filename=filename, content_type="image/png")
 
             return mongo.db.avatar.insert_one({
