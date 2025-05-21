@@ -21,7 +21,7 @@
       <label for="tts_voice"><strong>Select TTS Voice:</strong></label>
       <select name="tts_voice" id="tts_voice" class="form-control mx-auto" style="max-width: 300px;" required>
         {% for voice in tts_options %}
-          <option value="{{ voice }}">{{ voice }}</option>
+        <option value="{{ voice }}">{{ voice }}</option>
         {% endfor %}
       </select>
     </div>

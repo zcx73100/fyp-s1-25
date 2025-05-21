@@ -38,7 +38,6 @@ flask-cors==5.0.1
 Flask-Login==0.6.3
 Flask-Mail==0.10.0
 Flask-PyMongo==3.0.1
-rembg==2.0.51
 Flask-SQLAlchemy==3.1.1
 flask-talisman==1.1.0
 Flask-WTF==1.2.1

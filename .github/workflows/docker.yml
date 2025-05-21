@@ -27,3 +27,4 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/zcx73100/fyp-s1-25:latest
+          no-cache: true 
