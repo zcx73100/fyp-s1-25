@@ -399,14 +399,17 @@ flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: white; /* Optional: avoids content overlap */
+  background: rgba(255, 255, 255, 0.9); /* Less intrusive than solid white */
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 160px;
-  padding: 10px 0;
-  margin-bottom: 1.5rem;
+  min-height: 80px; /* ✅ Reduce height */
+  padding: 8px 0;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(8px); /* optional: for a frosted glass effect */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* subtle divider */
 }
+
 
 
 #assistant-header img,
