@@ -396,12 +396,18 @@ flex-direction: column;
 }
 
 #assistant-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: white; /* Optional: avoids content overlap */
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 160px;
+  padding: 10px 0;
   margin-bottom: 1.5rem;
 }
+
 
 #assistant-header img,
 #assistant-header video {
