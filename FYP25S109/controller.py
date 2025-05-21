@@ -110,8 +110,10 @@ class SearchTutorialController:
             "title": v.get("title", "Untitled"),
             "description": v.get("description", ""),
             "video_name": v.get("video_name", ""),
-            "username": v.get("username", "Unknown")
+            "username": v.get("username", "Unknown"),
+            "file_id": str(v.get("file_id")) if v.get("file_id") else None  # ✅ Include and stringify
         } for v in raw_results]
+
  # Call entity method
     
 class SearchAvatarController:
