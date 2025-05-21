@@ -6,13 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 
-# Install system dependencies
+# Install system dependencies including curl (for downloading model)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
     libffi-dev \
     ffmpeg \
-    wget \
+    curl \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
@@ -32,19 +32,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
  && rm -rf /var/lib/apt/lists/*
 
-# ✅ Copy and install Python dependencies
+# ✅ Pre-download u2netp model to avoid runtime download by rembg
+RUN mkdir -p /root/.u2net && \
+    curl -L https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx \
+    -o /root/.u2net/u2netp.onnx
+
+# ✅ Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# ✅ Pre-download u2netp model to avoid runtime fetch
-RUN mkdir -p /root/.u2net && \
-    wget https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx \
-         -O /root/.u2net/u2netp.onnx
-
-# ✅ Copy app files after dependencies for caching efficiency
+# ✅ Copy the rest of the app code
 COPY . .
 
+# Expose port
 EXPOSE 8080
 
-# ✅ Set generous timeout for cold start (optional for Railway)
+# ✅ Start server with a high timeout for slow startup (Railway safe)
 CMD ["gunicorn", "-b", "0.0.0.0:8080", "--timeout", "300", "main:app"]
