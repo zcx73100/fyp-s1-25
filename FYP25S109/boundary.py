@@ -156,8 +156,8 @@ class AvatarVideoBoundary:
         for video in draft_videos:
             video["_id"] = str(video["_id"])
             # ✅ Corrected key
-            if "obj_video_id" in video:
-                video["video_id"] = str(video["obj_video_id"])
+            if "video_id" in video:
+                video["video_id"] = str(video["video_id"])
             else:
                 video["video_id"] = None
 
@@ -1554,17 +1554,21 @@ class SearchBoundary:
 
         if filter_type == 'video':
             search_results = SearchTutorialController.search_video(search_query)
+
             for v in search_results:
                 v["video_name"] = v.get("video_name", "")
                 v["title"] = v.get("title", "Untitled")
                 v["description"] = v.get("description", "No description")
                 v["username"] = v.get("username", "Unknown")
 
-                # ✅ Ensure file_id is a string for URL use
-                if "file_id" in v:
-                    v["file_id"] = str(v["file_id"])
+                # ✅ Safely convert file_id or fallback _id
+                raw_file_id = v.get("file_id") or v.get("_id")
+                if raw_file_id:
+                    v["file_id"] = str(raw_file_id)
+                else:
+                    print("⚠️ Missing file_id for search result:", v)
 
-        
+                            
         elif filter_type == 'avatar':
             search_results = SearchAvatarController.search_avatar(search_query)
             for a in search_results:
