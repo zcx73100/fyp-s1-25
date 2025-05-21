@@ -399,23 +399,23 @@ flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.9); /* Less intrusive than solid white */
+  background: rgba(255, 255, 255, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 80px; /* ✅ Reduce height */
-  padding: 8px 0;
+  min-height: 160px;           /* ⬅️ Fix here */
+  padding: 10px 0;
   margin-bottom: 1rem;
-  backdrop-filter: blur(8px); /* optional: for a frosted glass effect */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* subtle divider */
+  overflow: visible;           /* ⬅️ Add this */
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
-
 
 
 #assistant-header img,
 #assistant-header video {
-  max-width: 150px;
-  height: auto;
+  width: 120px;                /* ⬅️ Fix here */
+  height: 120px;
   object-fit: cover;
   border-radius: 50%;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
