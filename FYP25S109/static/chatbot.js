@@ -42,13 +42,14 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleBtn.classList.toggle("collapsed", isCollapsed);
   });
 
-  newChatBtn?.addEventListener("click", async () => {
+    newChatBtn?.addEventListener("click", async () => {
     try {
       const res = await fetch("/api/chat/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "New Chat" })
       });
+
       const data = await res.json();
 
       const item = document.createElement("div");
@@ -61,10 +62,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                         <p class="mb-1 text-truncate">New chat started</p>`;
 
-      chatList.prepend(item);
+      // ✅ Clear active classes
       document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
+
+      chatList.prepend(item);
       item.classList.add("active");
-      item.click();  // ✅ Let the existing sidebar click handler handle loading
+
+      // ✅ Load chat manually (don't rely on click)
+      loadChat(data.chat_id, data.title);
     } catch {
       appendMessage("bot", "Failed to create new chat.");
     }
