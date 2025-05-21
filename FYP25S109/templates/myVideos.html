@@ -29,15 +29,20 @@
         {% for video in drafts %}
         <div class="col-md-4 mb-4">
             <div class="card h-100 border-warning shadow-sm">
-                <video class="card-img-top" controls>
+                {% if video.video_id %}
+                <video controls preload="metadata" width="100%">
                     <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id) }}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
+                {% else %}
+                <div class="text-danger">Video not available.</div>
+                {% endif %}
                 <div class="card-body">
                     <h5 class="card-title">{{ video.title or "Untitled Draft" }}</h5>
                     <p class="card-text text-muted">Created: {{ video.created_at.strftime('%B %d, %Y') }}</p>
                     <span class="badge bg-warning text-dark">Draft</span>
 
+                    {% if video.video_id %}
                     <form method="POST" action="{{ url_for('boundary.publish_video', video_id=video.video_id) }}">
                         <button type="submit" class="btn btn-sm btn-success mt-2">Publish</button>
                     </form>
@@ -45,6 +50,9 @@
                           onsubmit="return confirm('Are you sure you want to delete this draft?');">
                         <button type="submit" class="btn btn-danger btn-sm mt-1">Delete</button>
                     </form>
+                    {% else %}
+                    <p class="text-muted mt-2">No video file available.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -59,10 +67,14 @@
         {% for video in videos %}
         <div class="col-md-4 mb-4">
             <div class="card h-100 shadow-sm">
+                {% if video.video_id %}
                 <video class="card-img-top" controls>
                     <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id) }}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
+                {% else %}
+                <div class="text-danger">Video not available.</div>
+                {% endif %}
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h5 class="card-title mb-0" id="title-{{ video.video_id }}">{{ video.title }}</h5>
@@ -101,10 +113,14 @@
                         {% endif %}
                     {% endif %}
 
+                    {% if video.video_id %}
                     <form method="POST" action="{{ url_for('boundary.delete_generated_video', video_id=video.video_id) }}"
                           onsubmit="return confirm('Are you sure you want to delete this video?');">
                         <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                     </form>
+                    {% else %}
+                    <p class="text-muted">Video cannot be deleted — no file available.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
