@@ -496,9 +496,7 @@ class AvatarVideoBoundary:
         })
 
         avatars      = list(mongo.db.avatar.find({"username": username}))
-        voices       = list(mongo.db.voice_records.find({"username": username, "$or": [
-            { "source": { "$exists": False } },
-            { "source": { "$ne": "chatbot" } }]}))
+        voices       = list(mongo.db.voice_records.find({"username": username, "source": { "$ne": "chatbot" }}))
         classroom_id = request.args.get("classroom_id")   # only this one
         show_publish = bool(classroom_id)                  # show if present
 
