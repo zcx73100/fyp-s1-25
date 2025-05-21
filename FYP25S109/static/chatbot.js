@@ -27,6 +27,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const speechSynthesis = window.speechSynthesis;
 
+  async function fetchAndRenderChatList() {
+  try {
+    const res = await fetch("/api/chat/list");
+    const data = await res.json();
+
+    const chatList = document.getElementById("chat-list");
+    if (!chatList) return;
+
+    chatList.innerHTML = ""; // Clear old chats
+
+    data.chats.forEach(chat => {
+      const item = document.createElement("div");
+      item.className = "chat-item list-group-item list-group-item-action";
+      item.dataset.chatId = chat.chat_id;
+      item.dataset.title = chat.title;
+
+      item.innerHTML = `
+        <div class="d-flex w-100 justify-content-between">
+          <h6 class="mb-1">${chat.title}</h6>
+          <small>${new Date(chat.updated_at || Date.now()).toLocaleTimeString()}</small>
+        </div>
+        <p class="mb-1 text-truncate">Chat</p>
+      `;
+
+      chatList.appendChild(item);
+    });
+  } catch (err) {
+    console.error("❌ Failed to load chat list:", err);
+  }
+}
+
   // Sidebar toggle
   const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
   if (sidebarCollapsed) {
@@ -43,37 +74,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
     newChatBtn?.addEventListener("click", async () => {
-    try {
-      const res = await fetch("/api/chat/new", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New Chat" })
-      });
+  try {
+    const res = await fetch("/api/chat/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "New Chat" })
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      const item = document.createElement("div");
-      item.className = "chat-item list-group-item list-group-item-action";
-      item.dataset.chatId = data.chat_id;
-      item.dataset.title = data.title;
-      item.innerHTML = `<div class="d-flex w-100 justify-content-between">
-                          <h6 class="mb-1">${data.title}</h6>
-                          <small>${new Date().toLocaleTimeString()}</small>
-                        </div>
-                        <p class="mb-1 text-truncate">New chat started</p>`;
-
-      // ✅ Clear active classes
-      document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
-
-      chatList.prepend(item);
-      item.classList.add("active");
-
-      // ✅ Load chat manually (don't rely on click)
-      loadChat(data.chat_id, data.title);
-    } catch {
-      appendMessage("bot", "Failed to create new chat.");
-    }
-  });
+    await fetchAndRenderChatList();       // 🔄 reload sidebar list
+    loadChat(data.chat_id, data.title);   // ✅ load new chat
+  } catch {
+    appendMessage("bot", "Failed to create new chat.");
+  }
+});
 
 
   deleteChatBtn?.addEventListener("click", async () => {
@@ -309,7 +324,7 @@ async function checkAndReplaceAvatarWithVideo(taskId) {
         }
 
         avatarWrapper.innerHTML = `
-          <video id="assistant-video" class="rounded-circle shadow-sm" style="max-width: 150px;" autoplay loop muted>
+          <video id="assistant-video" class="rounded-circle shadow-sm" style="max-width: 150px;" autoplay controls>
             <source src="${videoUrl}" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
