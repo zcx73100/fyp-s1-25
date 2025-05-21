@@ -31,7 +31,7 @@
             <div class="card h-100 border-warning shadow-sm">
                 {% if video.video_id %}
                 <video controls preload="metadata" width="100%">
-                    <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id) }}" type="video/mp4">
+                <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id|string) }}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
                 {% else %}
