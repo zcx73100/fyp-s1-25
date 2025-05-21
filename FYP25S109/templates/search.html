@@ -9,11 +9,14 @@
         {% for video in search_results %}
         <div class="col-md-4">
             <div class="card mb-3">
+                {% if video.file_id %}
                 <video class="card-img-top w-100" controls preload="metadata" style="max-height: 400px; object-fit: contain;">
                 <source src="{{ url_for('boundary.serve_video', file_id=video.file_id) }}" type="video/mp4">
                 Your browser does not support the video tag.
                 </video>
-
+                {% else %}
+                <div class="text-danger text-center p-3">Video not available.</div>
+                {% endif %}
                 <div class="card-body">
                     <h5>{{ video.title }}</h5>
                     <p>{{ video.description }}</p>
