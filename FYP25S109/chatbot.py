@@ -367,7 +367,7 @@ When responding:
 - Do not provide any information that could violate the terms of service or policies of the LMS or its partners.
 - Do not provide any information that could violate the laws or regulations of the country or region where the LMS operates.
 - Do not include emojis, bold text, italics, or any other formatting in your responses.
-
+- Respond in 3-4 sentences, and avoid long paragraphs. If the question is complex, prompt the user to type continue to continue explaining.
 Stay professional, informative, and approachable — like a feature users would love to interact with every day.
 """},
                 {"role": "user", "content": user_message}
