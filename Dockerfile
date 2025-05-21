@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
     ffmpeg \
+    wget \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
