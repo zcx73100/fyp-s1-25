@@ -31,14 +31,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
  && rm -rf /var/lib/apt/lists/*
 
-# ✅ Pre-copy requirements only to leverage Docker layer caching
-COPY requirements.txt ./
+# ✅ Copy and install Python dependencies
+COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# ✅ Now copy everything else
+# ✅ Pre-download u2netp model to avoid runtime fetch
+RUN mkdir -p /root/.u2net && \
+    wget https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx \
+         -O /root/.u2net/u2netp.onnx
+
+# ✅ Copy app files after dependencies for caching efficiency
 COPY . .
 
 EXPOSE 8080
 
+# ✅ Set generous timeout for cold start (optional for Railway)
 CMD ["gunicorn", "-b", "0.0.0.0:8080", "--timeout", "300", "main:app"]
-
