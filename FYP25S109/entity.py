@@ -460,36 +460,30 @@ class Avatar:
 
     def save_image(self, image_binary, filename):
         try:
-            from rembg import remove, new_session
-
             # ✅ Open and optionally downscale the image
             image = Image.open(BytesIO(image_binary)).convert("RGBA")
             if max(image.size) > 512:
-                image.thumbnail((512, 512))
+                image.thumbnail((512, 512))  # Early resize to save memory
 
-            buffer = BytesIO()
-            image.save(buffer, format="PNG")
-            buffer.seek(0)
-
-            # ✅ Use resized image for rembg
-            session_rembg = new_session(model_name="u2netp")
-            image_no_bg = remove(buffer.read(), session=session_rembg)
-
-            # ✅ Process cleaned image
-            image = Image.open(BytesIO(image_no_bg)).convert("RGBA")
+            # ✅ Make the image square (centered on transparent canvas)
             width, height = image.size
             new_size = max(width, height)
             square_image = Image.new("RGBA", (new_size, new_size), (255, 255, 255, 0))
             square_image.paste(image, ((new_size - width) // 2, (new_size - height) // 2))
+
+            # ✅ Final resize to 512x512 (SadTalker ready)
             resized_image = square_image.resize((512, 512))
 
+            # ✅ Save to memory buffer
             output = BytesIO()
             resized_image.save(output, format="PNG")
             output.seek(0)
 
+            # ✅ Store in GridFS
             fs = get_fs()
             file_id = fs.put(output, filename=filename, content_type="image/png")
 
+            # ✅ Save metadata to MongoDB
             return mongo.db.avatar.insert_one({
                 "username": session["username"],
                 "file_id": file_id,
