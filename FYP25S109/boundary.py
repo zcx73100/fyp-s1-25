@@ -1786,10 +1786,10 @@ class AddAvatarBoundary:
 
             result = AddAvatarController.add_avatar(username, avatarname, avatar_file)
 
-            if result['success']:
+            if result:
                 flash("Avatar added successfully.", category='success')
             else:
-                flash(f"Failed to add avatar: {result['message']}", category='error')
+                flash("Failed to add avatar.", category='error')
 
             return redirect(url_for('boundary.create_avatar'))
 
