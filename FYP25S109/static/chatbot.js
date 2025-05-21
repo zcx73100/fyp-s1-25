@@ -312,7 +312,7 @@ async function checkAndReplaceAvatarWithVideo(taskId) {
         console.log("✅ Persistent avatar replaced with video:", videoUrl);
       }
 
-      if (++attempts >= 60) {
+      if (++attempts >= 400) {
         clearInterval(intervalId);
         console.warn("⏱️ Video not ready after waiting.");
       }
