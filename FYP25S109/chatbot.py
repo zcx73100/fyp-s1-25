@@ -127,14 +127,12 @@ class ChatbotBoundary:
 
         # Step 2: Get avatars uploaded by those admin users
         avatars = list(mongo.db.avatar.find({"username": {"$in": admin_usernames}}))        
-        tts_options = ["male_en", "female_en", "neutral_en",
-        "male_es", "female_es",
-        "female_fr", "neutral_fr",
-        "neutral_de",
-        "neutral_it",
-        "neutral_ja",
-        "neutral_ko",
-        "neutral_id"]  # adjust based on your supported voices
+        tts_options = [
+                "female_en",
+                "female_es",
+                "female_fr",
+                "female_id",
+                "female_ja"]  # adjust based on your supported voices
         
         return render_template("select_avatar.html", avatars=avatars, tts_options=tts_options)
 
@@ -367,7 +365,7 @@ When responding:
 - Do not provide any information that could violate the terms of service or policies of the LMS or its partners.
 - Do not provide any information that could violate the laws or regulations of the country or region where the LMS operates.
 - Do not include emojis, bold text, italics, or any other formatting in your responses.
-- Respond in 3-4 sentences, and avoid long paragraphs. If the question is complex, prompt the user to type continue to continue explaining.
+
 Stay professional, informative, and approachable — like a feature users would love to interact with every day.
 """},
                 {"role": "user", "content": user_message}

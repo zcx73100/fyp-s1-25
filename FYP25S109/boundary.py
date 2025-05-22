@@ -1440,11 +1440,11 @@ class ChangeAssistantBoundary:
                 unique_ids.add(avatar["_id"])
 
         tts_options = [
-                "female_en", "male_en",
-                "female_es", "male_es",
-                "female_fr", "male_fr",
-                "female_id", "male_id",
-                "female_ja", "male_ja"
+                "female_en",
+                "female_es",
+                "female_fr",
+                "female_id",
+                "female_ja"
             ]
         return render_template("changeAssistant.html", avatars=avatars, user_info=user_info, tts_options=tts_options)
 
@@ -1786,10 +1786,10 @@ class AddAvatarBoundary:
 
             result = AddAvatarController.add_avatar(username, avatarname, avatar_file)
 
-            if result:
+            if result['success']:
                 flash("Avatar added successfully.", category='success')
             else:
-                flash("Failed to add avatar.", category='error')
+                flash(f"Failed to add avatar: {result['message']}", category='error')
 
             return redirect(url_for('boundary.create_avatar'))
 
