@@ -460,40 +460,43 @@ class Avatar:
 
     def save_image(self, image_binary, filename):
         try:
-            # ✅ Open and optionally downscale the image
+            # ✅ Process and resize image
             image = Image.open(BytesIO(image_binary)).convert("RGBA")
             if max(image.size) > 512:
-                image.thumbnail((512, 512))  # Early resize to save memory
+                image.thumbnail((512, 512))
 
-            # ✅ Make the image square (centered on transparent canvas)
             width, height = image.size
             new_size = max(width, height)
             square_image = Image.new("RGBA", (new_size, new_size), (255, 255, 255, 0))
             square_image.paste(image, ((new_size - width) // 2, (new_size - height) // 2))
-
-            # ✅ Final resize to 512x512 (SadTalker ready)
             resized_image = square_image.resize((512, 512))
 
-            # ✅ Save to memory buffer
+            # ✅ Save image to memory
             output = BytesIO()
             resized_image.save(output, format="PNG")
             output.seek(0)
 
-            # ✅ Store in GridFS
+            # ✅ Encode base64
+            output_base64 = base64.b64encode(output.getvalue()).decode("utf-8")
+
+            # ✅ Save to GridFS
             fs = get_fs()
             file_id = fs.put(output, filename=filename, content_type="image/png")
 
-            # ✅ Save metadata to MongoDB
+            # ✅ Save complete avatar document
             return mongo.db.avatar.insert_one({
                 "username": session["username"],
+                "avatarname": filename.rsplit(".", 1)[0],  # use filename (without extension) as default name
                 "file_id": file_id,
                 "filename": filename,
+                "image_data": output_base64,
                 "created_at": datetime.utcnow()
             }).inserted_id
 
         except Exception as e:
             print("❌ Error saving avatar:", e)
             raise
+
 
 
 
