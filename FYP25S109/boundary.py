@@ -288,82 +288,87 @@ class AvatarVideoBoundary:
 
 
 
-    @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["POST"])
-    def generate_video(avatar_id, audio_id):
+    @boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
+    def generate_video_for_chatbot(avatar_id, audio_id):
+        from bson import ObjectId
+        import threading, io, os, requests
+        from datetime import datetime
+
         username = session.get("username")
-        # … validation logic …
+        if not username:
+            return jsonify({"success": False, "error": "Not logged in"}), 401
 
-        video_title = request.form.get("video_title", "Untitled")
-        task_id     = str(uuid.uuid4())
+        try:
+            avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+            if not avatar_doc:
+                return jsonify({"success": False, "error": "Avatar not found"}), 404
 
-        avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
-        if not avatar_doc:
-            return jsonify(success=False, error="Avatar not found"), 404
+            file_id = avatar_doc.get("file_id")
+            if not file_id:
+                return jsonify({"success": False, "error": "Avatar missing file_id"}), 400
 
+            task_id = str(uuid.uuid4())
 
-        def background_video_generation():
-            try:
-                fs = get_fs()
-                img = fs.get(ObjectId(avatar_doc["file_id"]))
-                aud = fs.get(ObjectId(audio_id))
+            def background_video_generation():
+                try:
+                    fs = get_fs()
 
-                files = {
-                    "image_file": (img.filename, img.read(), img.content_type),
-                    "audio_file": (aud.filename, aud.read(), aud.content_type)
-                }
-                SADTALKER_API = os.getenv("SADTALKER_API_URL")
-                resp = requests.post(SADTALKER_API, files=files, stream=True, timeout=300)
-                resp.raise_for_status()
+                    # Retrieve avatar image and audio from GridFS
+                    img = fs.get(ObjectId(file_id))
+                    aud = fs.get(ObjectId(audio_id))
 
-                buf = io.BytesIO()
-                for chunk in resp.iter_content(8192):
-                    buf.write(chunk)
-                buf.seek(0)
+                    files = {
+                        "image_file": (img.filename, img.read(), img.content_type),
+                        "audio_file": (aud.filename, aud.read(), aud.content_type)
+                    }
 
-                gridfs_id = fs.put(buf, filename=f"{video_title}.mp4", content_type="video/mp4")
+                    SADTALKER_API = os.getenv("SADTALKER_API_URL")
+                    if not SADTALKER_API:
+                        raise RuntimeError("SADTALKER_API_URL is not set.")
 
-                mongo.db.tempvideo.insert_one({
-                    "task_id": task_id,
-                    "username": username,
-                    "video_id": gridfs_id,
-                    "title": video_title, 
-                    "created_at": datetime.utcnow(),
-                    "is_published": False
-                })
-            except Exception as err:
-                mongo.db.tempvideo.insert_one({
-                    "task_id": task_id,
-                    "username": username,
-                    "title": video_title, 
-                    "error": str(err),
-                    "created_at": datetime.utcnow()
-                })
+                    resp = requests.post(SADTALKER_API, files=files, stream=True, timeout=300)
+                    resp.raise_for_status()
 
+                    # Write the streamed response to memory buffer
+                    buf = io.BytesIO()
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        buf.write(chunk)
+                    buf.seek(0)
 
-    @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
-    def cleanup_old_temp_videos():
-        now = datetime.utcnow()
+                    # Save video to GridFS
+                    gridfs_id = fs.put(buf, filename="Chatbot Reply.mp4", content_type="video/mp4")
 
-        # For chatbot videos: delete if older than 5 minutes
-        chatbot_cutoff = now - timedelta(minutes=5)
-        chatbot_result = mongo.db.tempvideo.delete_many({
-            "source": "chatbot",
-            "created_at": {"$lt": chatbot_cutoff}
-        })
+                    # Save metadata
+                    mongo.db.tempvideo.insert_one({
+                        "task_id": task_id,
+                        "username": username,
+                        "video_id": gridfs_id,
+                        "created_at": datetime.utcnow(),
+                        "source": "chatbot",
+                        "is_published": False
+                    })
 
-        # For all other videos: delete if older than 24 hours
-        general_cutoff = now - timedelta(hours=24)
-        general_result = mongo.db.tempvideo.delete_many({
-            "source": {"$ne": "chatbot"},
-            "is_published": False,
-            "created_at": {"$lt": general_cutoff}
-        })
+                except Exception as err:
+                    print(f"[Chatbot Video] ❌ Error: {err}")
+                    mongo.db.tempvideo.insert_one({
+                        "task_id": task_id,
+                        "username": username,
+                        "error": str(err),
+                        "created_at": datetime.utcnow(),
+                        "source": "chatbot",
+                        "status": "failed"
+                    })
 
-        return jsonify(
-            success=True,
-            chatbot_deleted=chatbot_result.deleted_count,
-            other_deleted=general_result.deleted_count
-        )
+            threading.Thread(target=background_video_generation, daemon=True).start()
+
+            return jsonify({
+                "success": True,
+                "task_id": task_id
+            })
+
+        except Exception as e:
+            print("❌ Error in generate_video_for_chatbot:", e)
+            return jsonify({"success": False, "error": str(e)}), 500
 
         
     @boundary.route("/stream_avatar/<avatar_id>")
