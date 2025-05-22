@@ -2782,14 +2782,7 @@ class TeacherManageQuizBoundary:
             return redirect(url_for('manage_quizzes'))
 
         if request.method == "POST":
-            # Debug output
-            debug_info = {
-                'form_data': {k: v for k, v in request.form.items()},
-                'files': {k: v.filename for k, v in request.files.items()}
-            }
-            print("DEBUG - Form Data:", debug_info)
-
-            # Check if this is a delete request
+            # Handle question deletion first
             if 'delete_question' in request.form:
                 try:
                     delete_index = int(request.form['delete_question'])
@@ -2804,11 +2797,9 @@ class TeacherManageQuizBoundary:
                     else:
                         flash("Invalid question index for deletion!", "danger")
                     return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
-
                 except ValueError:
                     flash("Invalid deletion request!", "danger")
                     return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
-
 
             # Process quiz update
             quiz_title = request.form.get('title', '').strip()
@@ -2818,35 +2809,30 @@ class TeacherManageQuizBoundary:
                 flash("Title and description are required!", "danger")
                 return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
 
-
             # Process questions
             updated_questions = []
-            i = 0
-            while True:
-                # Check if question exists in form
-                question_text = request.form.get(f'questions[{i}][text]')
-                if question_text is None:
-                    break
+            question_indices = set()
+            
+            # Find all question indices in the form
+            for key in request.form:
+                if key.startswith('questions[') and '][text]' in key:
+                    try:
+                        idx = int(key.split('[')[1].split(']')[0])
+                        question_indices.add(idx)
+                    except (IndexError, ValueError):
+                        continue
 
-                question_text = question_text.strip()
+            for i in sorted(question_indices):
+                question_text = request.form.get(f'questions[{i}][text]', '').strip()
                 if not question_text:
                     flash(f"Question {i+1} text cannot be empty!", "danger")
                     return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
 
-
-                # Get all 4 options
-                options = [
-                    request.form.get(f'questions[{i}][options][0]', '').strip(),
-                    request.form.get(f'questions[{i}][options][1]', '').strip(),
-                    request.form.get(f'questions[{i}][options][2]', '').strip(),
-                    request.form.get(f'questions[{i}][options][3]', '').strip()
-                ]
-
-                # Validate options
-                if any(not opt for opt in options):
+                # Get all 4 options using getlist()
+                options = request.form.getlist(f'questions[{i}][options][]')
+                if len(options) != 4 or any(not opt.strip() for opt in options):
                     flash(f"All 4 options must be provided for Question {i+1}", "danger")
                     return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
-
 
                 # Validate correct answer
                 try:
@@ -2857,21 +2843,20 @@ class TeacherManageQuizBoundary:
                     flash(f"Invalid correct answer for Question {i+1}", "danger")
                     return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
 
-
-                # Handle image - keep existing or upload new
+                # Handle image
                 image_data = None
                 image_file = request.files.get(f'questions[{i}][image]')
                 
                 if image_file and image_file.filename:
-                    # New image uploaded
                     if not image_file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                         flash("Only PNG, JPG, and JPEG images are allowed!", "danger")
                         return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
+                    if image_file.content_length > 2 * 1024 * 1024:  # 2MB limit
+                        flash("Image size must be less than 2MB", "danger")
+                        return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
                     image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                elif request.form.get(f'questions[{i}][existing_image]') == 'true':
-                    # Keep existing image if it exists
-                    if i < len(quiz.get('questions', [])) and 'image' in quiz['questions'][i]:
-                        image_data = quiz['questions'][i]['image']
+                elif i < len(quiz.get('questions', [])) and 'image' in quiz['questions'][i]:
+                    image_data = quiz['questions'][i]['image']
 
                 updated_questions.append({
                     "text": question_text,
@@ -2879,12 +2864,10 @@ class TeacherManageQuizBoundary:
                     "correct_answer": correct_answer,
                     "image": image_data
                 })
-                i += 1
 
             if not updated_questions:
                 flash("Quiz must have at least one question!", "danger")
                 return redirect(url_for('boundary.update_quiz', quiz_id=quiz_id))
-
 
             # Update database
             mongo.db.quizzes.update_one(
@@ -2900,23 +2883,16 @@ class TeacherManageQuizBoundary:
             flash("Quiz updated successfully!", "success")
             return redirect(url_for('manage_quizzes', classroom_id=quiz["classroom_id"]))
 
-        # For GET requests, include debug info in template
-        debug_data = {
-            'request_method': request.method,
-            'quiz_id': quiz_id,
-            'existing_questions': len(quiz.get('questions', [])) if quiz else 0,
-            'form_fields': list(request.form.keys()) if request.method == "POST" else None,
-            'files_uploaded': list(request.files.keys()) if request.method == "POST" else None
-        }
-
-        # Add this to your template context
+        # Prepare debug info for GET request
         debug_info = {
-            'backend_debug': debug_data,
-            'request_method': request.method,
-            'current_time': datetime.utcnow().isoformat()
+            'backend_debug': {
+                'quiz_id': quiz_id,
+                'question_count': len(quiz.get('questions', [])),
+                'current_time': datetime.utcnow().isoformat()
+            },
+            'request_method': request.method
         }
 
-        # Then include it in your render_template call
         return render_template("updateQuiz.html", 
                             quiz=quiz, 
                             quiz_id=quiz_id, 
