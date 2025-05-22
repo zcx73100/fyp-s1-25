@@ -135,10 +135,13 @@ class ManageAvatarController:
 class AddAvatarController:
     @staticmethod
     def add_avatar(username, avatarname, avatar_file):
-        avatar = Avatar(avatar_file, avatarname, username)
-        image_binary = avatar_file.read()             # ✅ Read binary data from the file
-        filename = avatar_file.filename  
-        return avatar.save_image(image_binary, filename)
+        avatar = Avatar(
+            image_file=avatar_file,
+            avatarname=avatarname,
+            username=username
+        )
+        return avatar.save_image()
+
 
 class DeleteAvatarController:
     @staticmethod
