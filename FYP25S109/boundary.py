@@ -1328,18 +1328,19 @@ class CreateAccountBoundary:
         if 'username' not in session:
             flash("You must be logged in to view account details.", category='error')
             return redirect(url_for('boundary.login'))
-
+    
         username = session['username']
         user_info = DisplayUserDetailController.get_user_info(username)
-
+    
         current_avatar = None
-        if user_info and user_info.get("assistant"):
+        if user_info and user_info.get("assistant") and user_info["assistant"].get("avatar_id"):
             try:
-                current_avatar = mongo.db.avatar.find_one({"_id": ObjectId(user_info["assistant"])})
+                current_avatar = mongo.db.avatar.find_one({"_id": ObjectId(user_info["assistant"]["avatar_id"])})
             except Exception as e:
                 print(f"⚠️ Failed to fetch avatar: {e}")
-
+    
         return render_template("accountDetails.html", user_info=user_info, current_avatar=current_avatar)
+
 
 
 # Edit Account Details
