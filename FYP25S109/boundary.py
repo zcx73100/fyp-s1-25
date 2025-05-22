@@ -326,6 +326,7 @@ class AvatarVideoBoundary:
                     "task_id": task_id,
                     "username": username,
                     "video_id": gridfs_id,
+                    "title": video_title, 
                     "created_at": datetime.utcnow(),
                     "is_published": False
                 })
@@ -333,12 +334,11 @@ class AvatarVideoBoundary:
                 mongo.db.tempvideo.insert_one({
                     "task_id": task_id,
                     "username": username,
+                    "title": video_title, 
                     "error": str(err),
                     "created_at": datetime.utcnow()
                 })
 
-        threading.Thread(target=background_video_generation, daemon=True).start()
-        return jsonify(success=True, task_id=task_id)
 
     @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
     def cleanup_old_temp_videos():
