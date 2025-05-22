@@ -44,7 +44,7 @@
             <th>Assistant Avatar</th>
             <td>
                 {% if current_avatar and current_avatar.image_data %}
-                    <img src="data:image/png;base64,{{ current_avatar.image_data }}"
+                    <img src="{{ url_for('boundary.stream_avatar', avatar_id=current_avatar._id) }}"
                          alt="Avatar Assistant"
                          class="img-thumbnail rounded-circle"
                          width="150">
