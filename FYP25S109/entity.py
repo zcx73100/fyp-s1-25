@@ -14,7 +14,7 @@ from gradio_client import Client
 import wave
 import subprocess
 import shutil
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps,UnidentifiedImageError
 import base64
 import mimetypes
 from gtts import gTTS
@@ -458,48 +458,48 @@ class Avatar:
     def allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
-    def save_image(self, image_binary, filename):
+    def save_image(self):
         try:
-            # ✅ Process and resize image
-            image = Image.open(BytesIO(image_binary)).convert("RGBA")
-            if max(image.size) > 512:
-                image.thumbnail((512, 512))
+            # ✅ Step 1: Ensure file was uploaded
+            if not self.image_file:
+                raise ValueError("No file selected for upload.")
 
-            width, height = image.size
-            new_size = max(width, height)
-            square_image = Image.new("RGBA", (new_size, new_size), (255, 255, 255, 0))
-            square_image.paste(image, ((new_size - width) // 2, (new_size - height) // 2))
-            resized_image = square_image.resize((512, 512))
+            filename = secure_filename(self.image_file.filename)
+            if not self.allowed_file(filename):
+                raise ValueError("Invalid image format. Only PNG, JPG, or JPEG allowed.")
 
-            # ✅ Save image to memory
-            output = BytesIO()
-            resized_image.save(output, format="PNG")
-            output.seek(0)
+            # ✅ Step 2: Read file content
+            image_binary = self.image_file.read()
+            if len(image_binary) < 1000:
+                raise ValueError("Uploaded image is too small or empty.")
 
-            # ✅ Encode base64
-            output_base64 = base64.b64encode(output.getvalue()).decode("utf-8")
+            # ✅ Step 3: Validate image (no conversion)
+            try:
+                Image.open(BytesIO(image_binary)).verify()
+            except UnidentifiedImageError:
+                raise ValueError("Uploaded file is not a valid or supported image.")
 
-            # ✅ Save to GridFS
+            # ✅ Step 4: Save to GridFS
             fs = get_fs()
-            file_id = fs.put(output, filename=filename, content_type="image/png")
+            gridfs_id = fs.put(image_binary, filename=filename, content_type="image/png")
 
-            # ✅ Save complete avatar document
-            return mongo.db.avatar.insert_one({
-                "username": session["username"],
-                "avatarname": filename.rsplit(".", 1)[0],  # use filename (without extension) as default name
-                "file_id": file_id,
-                "filename": filename,
-                "image_data": output_base64,
-                "created_at": datetime.utcnow()
-            }).inserted_id
+            # ✅ Step 5: Store Base64 for frontend preview
+            image_base64 = base64.b64encode(image_binary).decode("utf-8")
+
+            # ✅ Step 6: Save avatar metadata in MongoDB
+            mongo.db.avatar.insert_one({
+                'avatarname': self.avatarname,
+                'username': self.username,
+                'image_data': image_base64,
+                'file_id': gridfs_id,
+                'upload_date': datetime.utcnow()
+            })
+
+            return {"success": True, "message": "Avatar uploaded successfully."}
 
         except Exception as e:
-            print("❌ Error saving avatar:", e)
-            raise
-
-
-
-
+            logging.error(f"❌ Error saving avatar: {str(e)}")
+            return {"success": False, "message": str(e)}
 
     def add_avatar(self, avatarname, username, image_data, file_path):
         try:
