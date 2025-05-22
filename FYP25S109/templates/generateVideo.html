@@ -752,7 +752,7 @@ document.addEventListener("DOMContentLoaded", () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title:     document.getElementById('videoTitleInput').value.trim(),
+          title:     document.getElementById('videoTitle').value.trim(),
           avatar_id: avatar.value,
           audio_id: audioChoice.value,
           video_id: data.video_id
