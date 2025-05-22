@@ -342,13 +342,30 @@ class AvatarVideoBoundary:
 
     @boundary.route("/cleanup_old_temp_videos", methods=["POST"])
     def cleanup_old_temp_videos():
-        cutoff = datetime.utcnow() - timedelta(hours=24)
-        result = mongo.db.tempvideo.delete_many({
-            "is_published": False,
-            "created_at": {"$lt": cutoff}
+        now = datetime.utcnow()
+
+        # For chatbot videos: delete if older than 5 minutes
+        chatbot_cutoff = now - timedelta(minutes=5)
+        chatbot_result = mongo.db.tempvideo.delete_many({
+            "source": "chatbot",
+            "created_at": {"$lt": chatbot_cutoff}
         })
-        return jsonify(success=True, deleted_count=result.deleted_count)
-    
+
+        # For all other videos: delete if older than 24 hours
+        general_cutoff = now - timedelta(hours=24)
+        general_result = mongo.db.tempvideo.delete_many({
+            "source": {"$ne": "chatbot"},
+            "is_published": False,
+            "created_at": {"$lt": general_cutoff}
+        })
+
+        return jsonify(
+            success=True,
+            chatbot_deleted=chatbot_result.deleted_count,
+            other_deleted=general_result.deleted_count
+        )
+
+        
     @boundary.route("/stream_avatar/<avatar_id>")
     def stream_avatar(avatar_id):
         try:
