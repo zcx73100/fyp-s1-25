@@ -26,19 +26,19 @@
     </div>
 
     <!-- Attached Videos -->
-    {% if attached_videos %}
+    {% if video_previews %}
     <div class="mt-5">
         <h4>🎬 Attached Videos</h4>
         <div class="row">
-            {% for video in attached_videos %}
-                <div class="col-md-6 mt-3 video-preview">
-                    <video width="100%" controls>
-                        <source src="{{ url_for('boundary.serve_generated_video', video_id=video.id) }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                    <p class="mt-2 text-center">{{ video.name or "Untitled Video" }}</p>
-                </div>
-            {% endfor %}
+        {% for video in video_previews %}
+            <div class="col-md-6 mt-3 video-preview">
+            <video width="100%" controls>
+                <source src="{{ url_for('boundary.serve_generated_video', video_id=video.video_id) }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <p class="mt-2 text-center">{{ video.title or "Untitled Video" }}</p>
+            </div>
+        {% endfor %}
         </div>
     </div>
     {% endif %}
