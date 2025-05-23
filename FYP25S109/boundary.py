@@ -2897,7 +2897,7 @@ class TeacherManageQuizBoundary:
                 # Validate correct answer
                 try:
                     correct_answer = int(request.form.get(f'questions[{i}][correct_answer]', -1))
-                    if correct_answer not in {0, 1, 2, 3}:
+                    if correct_answer not in {1, 2, 3, 4}:
                         raise ValueError
                 except (ValueError, TypeError):
                     flash(f"Invalid correct answer for Question {i+1}", "danger")
@@ -2943,20 +2943,11 @@ class TeacherManageQuizBoundary:
             flash("Quiz updated successfully!", "success")
             return redirect(url_for('manage_quizzes', classroom_id=quiz["classroom_id"]))
 
-        # Prepare debug info for GET request
-        debug_info = {
-            'backend_debug': {
-                'quiz_id': quiz_id,
-                'question_count': len(quiz.get('questions', [])),
-                'current_time': datetime.utcnow().isoformat()
-            },
-            'request_method': request.method
-        }
+        
 
         return render_template("updateQuiz.html", 
                             quiz=quiz, 
-                            quiz_id=quiz_id, 
-                            debug_info=debug_info)
+                            quiz_id=quiz_id)
 
     @boundary.route('/delete_question/<quiz_id>/<question_index>', methods=['POST'])
     def delete_question(quiz_id, question_index):

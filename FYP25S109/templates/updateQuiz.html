@@ -24,52 +24,47 @@
             {% for question in quiz.questions %}
                 {% set i = loop.index0 %}
                 <fieldset id="question_{{ i }}" class="question-fieldset">
-                    <legend>
-                        Question {{ loop.index }}
-                        <button type="button" class="toggle-button" onclick="toggleFieldset(this)">Toggle</button>
-                    </legend>
+                <legend>
+                    Question {{ loop.index }}
+                    <button type="button" class="toggle-button" onclick="toggleFieldset(this)">Toggle</button>
+                </legend>
 
-                    <input type="hidden" name="questions[{{ i }}][existing]" value="true">
-                    
-                    <label for="question_text_{{ i }}">Text:</label>
-                    <input type="text" name="questions[{{ i }}][text]" id="question_text_{{ i }}" 
-                           value="{{ question.text }}" required
-                           onchange="updateDebugInfo()">
+                <input type="hidden" name="questions[{{ i }}][existing]" value="true">
+                
+                <label for="question_text_{{ i }}">Text:</label>
+                <input type="text" name="questions[{{ i }}][text]" id="question_text_{{ i }}" 
+                    value="{{ question.text }}" required>
 
-                    <label>Options:</label>
-                    {% for j in range(4) %}
-                        <div>
-                            <input type="text" name="questions[{{ i }}][options][]" 
-                                   value="{{ question.options[j] if question.options|length > j else '' }}" 
-                                   required
-                                   onchange="updateDebugInfo()">
-                        </div>
-                    {% endfor %}
+                <label>Options:</label>
+                {% for j in range(4) %}
+                    <div>
+                        <input type="radio" name="questions[{{ i }}][correct_answer]" 
+                            value="{{ j }}" 
+                            {% if question.correct_answer == j %}checked{% endif %}
+                            required>
+                        <input type="text" name="questions[{{ i }}][options][]" 
+                            value="{{ question.options[j] if question.options|length > j else '' }}" 
+                            required>
+                    </div>
+                {% endfor %}
 
-                    <label for="correct_{{ i }}">Correct Answer (1-4):</label>
-                    <input type="number" name="questions[{{ i }}][correct_answer]" 
-                           id="correct_{{ i }}" min="1" max="4" 
-                           value="{{ question.correct_answer }}" required
-                           onchange="updateDebugInfo()">
+                {% if question.image %}
+                    <div>
+                        <p>Current Image:</p>
+                        <img src="data:image/png;base64,{{ question.image }}" width="200">
+                        <input type="hidden" name="questions[{{ i }}][existing_image]" value="true">
+                    </div>
+                {% endif %}
 
-                    {% if question.image %}
-                        <div>
-                            <p>Current Image:</p>
-                            <img src="data:image/png;base64,{{ question.image }}" width="200">
-                            <input type="hidden" name="questions[{{ i }}][existing_image]" value="true">
-                        </div>
-                    {% endif %}
+                <label for="image_{{ i }}">Upload New Image:</label>
+                <input type="file" name="questions[{{ i }}][image]" id="image_{{ i }}">
 
-                    <label for="image_{{ i }}">Upload New Image:</label>
-                    <input type="file" name="questions[{{ i }}][image]" id="image_{{ i }}"
-                           onchange="updateDebugInfo()">
-
-                    <button type="button" name="delete_question" value="questions[{{ i }}]" 
-                            class="delete-button" 
-                            onclick="return confirm('Are you sure you want to delete this question?');">
-                        Delete Question
-                    </button>
-                </fieldset>
+                <button type="button" name="delete_question" value="{{ i }}"
+                        class="delete-button" 
+                        onclick="confirmDelete('{{ quiz._id }}', '{{ i }}')">
+                    Delete Question
+                </button>
+            </fieldset>
             {% endfor %}
         </div>
 
@@ -516,6 +511,18 @@
     function toggleBackendDebug() {
         const backendDebug = document.getElementById('backendDebugInfo');
         backendDebug.style.display = backendDebug.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function confirmDelete(quizId, questionIndex) {
+        if (confirm('Are you sure you want to delete this question?')) {
+            // Create a form to submit the deletion
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/delete_question/${quizId}/${questionIndex}`;
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
     }
 
 </script>
