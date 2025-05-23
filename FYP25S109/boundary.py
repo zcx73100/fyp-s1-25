@@ -288,87 +288,59 @@ class AvatarVideoBoundary:
 
 
 
-    @boundary.route("/generate_video_for_chatbot/<avatar_id>/<audio_id>", methods=["POST"])
-    def generate_video_for_chatbot(avatar_id, audio_id):
-        from bson import ObjectId
-        import threading, io, os, requests
-        from datetime import datetime
-
+    @boundary.route("/generate_video/<avatar_id>/<audio_id>", methods=["POST"])
+    def generate_video(avatar_id, audio_id):
         username = session.get("username")
-        if not username:
-            return jsonify({"success": False, "error": "Not logged in"}), 401
-
-        try:
-            avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
-            if not avatar_doc:
-                return jsonify({"success": False, "error": "Avatar not found"}), 404
-
-            file_id = avatar_doc.get("file_id")
-            if not file_id:
-                return jsonify({"success": False, "error": "Avatar missing file_id"}), 400
-
-            task_id = str(uuid.uuid4())
-
-            def background_video_generation():
-                try:
-                    fs = get_fs()
-
-                    # Retrieve avatar image and audio from GridFS
-                    img = fs.get(ObjectId(file_id))
-                    aud = fs.get(ObjectId(audio_id))
-
-                    files = {
-                        "image_file": (img.filename, img.read(), img.content_type),
-                        "audio_file": (aud.filename, aud.read(), aud.content_type)
-                    }
-
-                    SADTALKER_API = os.getenv("SADTALKER_API_URL")
-                    if not SADTALKER_API:
-                        raise RuntimeError("SADTALKER_API_URL is not set.")
-
-                    resp = requests.post(SADTALKER_API, files=files, stream=True, timeout=300)
-                    resp.raise_for_status()
-
-                    # Write the streamed response to memory buffer
-                    buf = io.BytesIO()
-                    for chunk in resp.iter_content(chunk_size=8192):
-                        buf.write(chunk)
-                    buf.seek(0)
-
-                    # Save video to GridFS
-                    gridfs_id = fs.put(buf, filename="Chatbot Reply.mp4", content_type="video/mp4")
-
-                    # Save metadata
-                    mongo.db.tempvideo.insert_one({
-                        "task_id": task_id,
+        video_title = request.form.get("video_title", "Untitled")
+        task_id = str(uuid.uuid4())
+    
+        avatar_doc = mongo.db.avatar.find_one({"_id": ObjectId(avatar_id)})
+        if not avatar_doc:
+            return jsonify(success=False, error="Avatar not found"), 404
+    
+        def background_video_generation():
+            try:
+                fs = get_fs()
+                img = fs.get(ObjectId(avatar_doc["file_id"]))
+                aud = fs.get(ObjectId(audio_id))
+    
+                files = {
+                    "image_file": (img.filename, img.read(), img.content_type),
+                    "audio_file": (aud.filename, aud.read(), aud.content_type)
+                }
+                SADTALKER_API = os.getenv("SADTALKER_API_URL")
+                resp = requests.post(SADTALKER_API, files=files, stream=True, timeout=300)
+                resp.raise_for_status()
+    
+                buf = io.BytesIO()
+                for chunk in resp.iter_content(8192):
+                    buf.write(chunk)
+                buf.seek(0)
+    
+                gridfs_id = fs.put(buf, filename=f"{video_title}.mp4", content_type="video/mp4")
+    
+                mongo.db.tempvideo.insert_one({
+                       "task_id": task_id,
                         "username": username,
                         "video_id": gridfs_id,
+                        "title": video_title,
+                        "avatar_id": ObjectId(avatar_id),   # ✅ Add this
+                        "audio_id": ObjectId(audio_id),     # ✅ Add this
                         "created_at": datetime.utcnow(),
-                        "source": "chatbot",
                         "is_published": False
-                    })
+                })
+            except Exception as err:
+                mongo.db.tempvideo.insert_one({
+                    "task_id": task_id,
+                    "username": username,
+                    "title": video_title, 
+                    "error": str(err),
+                    "created_at": datetime.utcnow()
+                })
+    
+        threading.Thread(target=background_video_generation, daemon=True).start()
+        return jsonify(success=True, task_id=task_id)  # ✅ This was missing!
 
-                except Exception as err:
-                    print(f"[Chatbot Video] ❌ Error: {err}")
-                    mongo.db.tempvideo.insert_one({
-                        "task_id": task_id,
-                        "username": username,
-                        "error": str(err),
-                        "created_at": datetime.utcnow(),
-                        "source": "chatbot",
-                        "status": "failed"
-                    })
-
-            threading.Thread(target=background_video_generation, daemon=True).start()
-
-            return jsonify({
-                "success": True,
-                "task_id": task_id
-            })
-
-        except Exception as e:
-            print("❌ Error in generate_video_for_chatbot:", e)
-            return jsonify({"success": False, "error": str(e)}), 500
 
         
     @boundary.route("/stream_avatar/<avatar_id>")
@@ -658,9 +630,9 @@ class AvatarVideoBoundary:
             if not video_id:
                 return jsonify({"success": False, "error": "Missing video_id"}), 400
 
-            result = mongo.db.video.update_one(
-                {"_id": ObjectId(video_id), "username": username},
-                {"$set": {"is_published": True}}
+            result = mongo.db.generated_videos.update_one(
+                {"video_id": ObjectId(video_id), "username": username},
+                {"$set": {"is_published": True, "published_at": datetime.utcnow()}}  # Include timestamp!
             )
 
             if result.modified_count == 0:
@@ -671,6 +643,7 @@ class AvatarVideoBoundary:
         except Exception as e:
             print("❌ Publish Error:", e)
             return jsonify(success=False, error=str(e)), 500
+
     
     @boundary.route("/upload_synthesized_voice", methods=["POST"])
     def upload_synthesized_voice():
@@ -2256,21 +2229,101 @@ class TeacherManageMaterialBoundary:
         title = request.form.get('title')
         description = request.form.get('description')
         file = request.files.get('file')
+        video_id = request.form.get('video_id')  # from hidden input, optional
 
-        # Call the Controller to process the material upload
-        result = UploadMaterialController.upload_material(title, file, session.get('username'), classroom_id, description)
-
-        if result["success"]:
-            flash(result["message"], 'success')
-            return redirect(url_for('boundary.manage_materials', classroom_id=classroom_id))
-        else:
-            flash(result["message"], 'danger')
+        if not file:
+            flash("Please upload a file. A video is optional.", "danger")
             return redirect(request.url)
 
-    @boundary.route('/upload_material/<classroom_id>', methods=['GET'])
-    def upload_material_page(classroom_id):
-        return render_template("uploadMaterial.html", classroom_id=classroom_id)
+        try:
+            material_doc = {
+                "classroom_id": ObjectId(classroom_id),
+                "title": title,
+                "description": description,
+                "uploaded_by": session.get("username"),
+                "uploaded_at": datetime.utcnow()
+            }
 
+            # ✅ Required: File upload
+            fs = get_fs()
+            file_id = fs.put(file, filename=file.filename)
+            material_doc["file_id"] = file_id
+            material_doc["file_name"] = file.filename
+
+            # ✅ Optional: Video attachment
+            if video_id:
+                material_doc["video_ids"] = [ObjectId(video_id)]
+
+                # Move video from tempvideo to video collection
+                temp = mongo.db.tempvideo.find_one({"video_id": ObjectId(video_id)})
+                if temp:
+                    mongo.db.video.insert_one({
+                        "video_gridfs_id": ObjectId(video_id),
+                        "uploaded_by": session.get("username"),
+                        "classroom_id": ObjectId(classroom_id),
+                        "title": title,
+                        "description": "Auto-attached to material",
+                        "uploaded_at": datetime.utcnow()
+                    })
+                    mongo.db.tempvideo.delete_one({"video_id": ObjectId(video_id)})
+
+            mongo.db.materials.insert_one(material_doc)
+            flash("Material uploaded successfully!", "success")
+            return redirect(url_for('boundary.manage_materials', classroom_id=classroom_id))
+
+        except Exception as e:
+            flash(f"Error uploading material: {str(e)}", "danger")
+            return redirect(request.url)
+
+
+    @boundary.route("/upload_material")
+    def upload_material_page():
+        classroom_id = request.args.get("classroom_id")
+        video_id = request.args.get("video_id")
+        return render_template("uploadMaterial.html", classroom_id=classroom_id, video_id=video_id)
+
+    @boundary.route("/publish_material_video", methods=["POST"])
+    def publish_material_video():
+        data = request.get_json()
+        gridfs_id = data.get("video_id")  # GridFS ID
+        classroom_id = data.get("classroom_id")
+
+        if not gridfs_id or not classroom_id:
+            return jsonify({"success": False, "error": "Missing video ID or classroom ID"}), 400
+
+        try:
+            # Check if already published
+            video_doc = mongo.db.material_video.find_one({"video_gridfs_id": ObjectId(gridfs_id)})
+
+            if not video_doc:
+                # If not found, look in tempvideo
+                temp_doc = mongo.db.tempvideo.find_one({"video_id": ObjectId(gridfs_id)})
+                if not temp_doc:
+                    return jsonify({"success": False, "error": "Video not found"}), 404
+
+                # Create new material video entry
+                video_doc = {
+                    "video_gridfs_id": ObjectId(gridfs_id),
+                    "uploaded_by": session.get("username"),
+                    "uploaded_at": datetime.utcnow(),
+                    "classroom_id": ObjectId(classroom_id),
+                    "title": "Teaching Material",
+                    "description": "Published by teacher"
+                }
+                mongo.db.material_video.insert_one(video_doc)
+
+                # Clean up tempvideo
+                mongo.db.tempvideo.delete_many({"video_id": ObjectId(gridfs_id)})
+
+            # Store reference if needed
+            video_doc = mongo.db.material_video.find_one({"video_gridfs_id": ObjectId(gridfs_id)})
+            session["stashed_video_id"] = str(video_doc["_id"])
+
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    
     @boundary.route('/manage_materials/<classroom_id>', methods=['GET'])
     def manage_materials(classroom_id):
         materials = mongo.db.materials.find({"classroom_id": ObjectId(classroom_id)})
