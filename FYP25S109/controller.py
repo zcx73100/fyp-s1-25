@@ -199,19 +199,36 @@ class UploadMaterialController:
     @staticmethod
     def upload_material(title, file, uploader, classroom_id, description, video_ids=None):
         try:
+            published_video_ids = []
+
+            if video_ids:
+                for vid in video_ids:
+                    try:
+                        vid_oid = ObjectId(vid)
+                        temp = mongo.db.tempvideo.find_one({"video_id": vid_oid})
+                        if temp:
+                            temp["is_published"] = True
+                            temp["published_at"] = datetime.utcnow()
+                            temp.pop("_id", None)
+                            mongo.db.generated_videos.insert_one(temp)
+                            mongo.db.tempvideo.delete_one({"video_id": vid_oid})
+                            published_video_ids.append(vid_oid)
+                    except Exception as e:
+                        print(f"❌ Failed to publish video {vid}: {e}")
+
+            # ✅ Save the material with the now-published video IDs
             material = Material(
                 title=title,
                 file=file,
                 uploader=uploader,
                 description=description,
                 classroom_id=classroom_id,
-                video_ids=video_ids  # ✅ pass it here
+                video_ids=published_video_ids
             )
             material.save_material()
             return {"success": True, "message": "Material uploaded successfully."}
         except Exception as e:
             return {"success": False, "message": str(e)}
-
     
 class ViewMaterialController:
     @staticmethod
