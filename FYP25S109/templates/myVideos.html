@@ -106,11 +106,14 @@
                             <form method="POST" action="{{ url_for('boundary.publish_video', video_id=video._id) }}">
                                 <button type="submit" class="btn btn-sm btn-success mb-1">Publish</button>
                             </form>
+                            
                         {% else %}
                             <form method="POST" action="{{ url_for('boundary.unpublish_video', video_id=video._id) }}">
                                 <button type="submit" class="btn btn-sm btn-warning mb-1">Unpublish</button>
                             </form>
                         {% endif %}
+                        {% else %}
+                         <button class="btn btn-sm btn-secondary mb-1" disabled>Save</button>
                     {% endif %}
 
                     {% if video.video_id %}
