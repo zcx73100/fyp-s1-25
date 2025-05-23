@@ -320,12 +320,14 @@ class AvatarVideoBoundary:
                 gridfs_id = fs.put(buf, filename=f"{video_title}.mp4", content_type="video/mp4")
     
                 mongo.db.tempvideo.insert_one({
-                    "task_id": task_id,
-                    "username": username,
-                    "video_id": gridfs_id,
-                    "title": video_title, 
-                    "created_at": datetime.utcnow(),
-                    "is_published": False
+                       "task_id": task_id,
+                        "username": username,
+                        "video_id": gridfs_id,
+                        "title": video_title,
+                        "avatar_id": ObjectId(avatar_id),   # ✅ Add this
+                        "audio_id": ObjectId(audio_id),     # ✅ Add this
+                        "created_at": datetime.utcnow(),
+                        "is_published": False
                 })
             except Exception as err:
                 mongo.db.tempvideo.insert_one({
@@ -628,9 +630,9 @@ class AvatarVideoBoundary:
             if not video_id:
                 return jsonify({"success": False, "error": "Missing video_id"}), 400
 
-            result = mongo.db.video.update_one(
-                {"_id": ObjectId(video_id), "username": username},
-                {"$set": {"is_published": True}}
+            result = mongo.db.generated_videos.update_one(
+                {"video_id": ObjectId(video_id), "username": username},
+                {"$set": {"is_published": True, "published_at": datetime.utcnow()}}  # Include timestamp!
             )
 
             if result.modified_count == 0:
@@ -641,6 +643,7 @@ class AvatarVideoBoundary:
         except Exception as e:
             print("❌ Publish Error:", e)
             return jsonify(success=False, error=str(e)), 500
+
     
     @boundary.route("/upload_synthesized_voice", methods=["POST"])
     def upload_synthesized_voice():
