@@ -5,23 +5,6 @@
 {% block content %}
 <div class="update-quiz-page">
     <h1>Update Quiz</h1>
-     <!-- Backend debug section -->
-    <div class="debug-info" id="backendDebugInfo" style="display: none;">
-        <strong>Backend Debug:</strong>
-        <div id="backendDebugContent">
-            {{ debug_info|tojson|safe }}
-        </div>
-    </div>
-    
-    <!-- Frontend debug section -->
-    <div class="debug-info" id="debugInfo" style="display: none;">
-        <strong>Debug Information:</strong>
-        <div id="debugContent">
-            Loading debug data...
-        </div>
-    </div>
-
-    <button class="debug-toggle" onclick="toggleBackendDebug()">Toggle Backend Debug</button>
 
     <form method="POST" enctype="multipart/form-data" id="quizForm">
         <div>
