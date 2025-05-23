@@ -48,7 +48,7 @@
       <button type="submit" class="btn btn-primary">📤 Submit New File</button>
     </form>
 
-    <form action="{{ url_for('boundary.generate_video_redirect') }}" method="GET" class="mt-3">
+    <form action="{{ url_for('boundary.generate_video') }}" method="GET" class="mt-3">
       <input type="hidden" name="assignment_id" value="{{ submission.assignment_id }}">
       <input type="hidden" name="classroom_id" value="{{ submission.classroom_id }}">
       <input type="hidden" name="source" value="submission">
