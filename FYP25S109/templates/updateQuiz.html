@@ -46,9 +46,9 @@
                         </div>
                     {% endfor %}
 
-                    <label for="correct_{{ i }}">Correct Answer (0-3):</label>
+                    <label for="correct_{{ i }}">Correct Answer (1-4):</label>
                     <input type="number" name="questions[{{ i }}][correct_answer]" 
-                           id="correct_{{ i }}" min="0" max="3" 
+                           id="correct_{{ i }}" min="1" max="4" 
                            value="{{ question.correct_answer }}" required
                            onchange="updateDebugInfo()">
 
