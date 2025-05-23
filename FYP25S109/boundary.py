@@ -2284,8 +2284,16 @@ class TeacherManageMaterialBoundary:
     @boundary.route("/upload_material")
     def upload_material_page():
         classroom_id = request.args.get("classroom_id")
-        video_id = request.args.get("video_id")
-        return render_template("uploadMaterial.html", classroom_id=classroom_id, video_id=video_id)
+        video_ids = request.args.getlist("video_ids")
+
+        # ✅ Support fallback to single video_id
+        if not video_ids:
+            video_id = request.args.get("video_id")
+            if video_id:
+                video_ids = [video_id]
+
+        return render_template("uploadMaterial.html", classroom_id=classroom_id, video_ids=video_ids)
+
 
 
     
