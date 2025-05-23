@@ -241,10 +241,9 @@
                 <i class="fas fa-paper-plane me-1"></i>Submit Assignment
             </button>
         {% elif session.get("role") == "Teacher" and request.args.get("source") == "material" %}
-          <a href="{{ url_for('boundary.upload_material_page') }}?classroom_id={{ request.args.get('classroom_id') }}&video_id={{ video_id }}" 
-            class="btn btn-warning">
-            📚 Publish to Material
-          </a>
+            <button id="publishMaterial" class="btn btn-warning">
+              📚 Publish to Material
+            </button>
         {% elif session.get("role") == "Teacher" and request.args.get("source") == "assignment" %}
             <button id="publishAssignment" class="btn btn-warning me-2">
                 <i class="fas fa-bullhorn me-1"></i>Publish to Class
@@ -856,6 +855,20 @@ document.addEventListener("DOMContentLoaded", () => {
       window.open(`/download_video/${vid}`, '_blank');
     }
   });
+
+  // Upload video mateiral 
+  document.getElementById("publishMaterial")?.addEventListener("click", () => {
+    const classroomId = document.getElementById("classroomIdInput").value;
+    const videoId = document.getElementById("videoIdInput").value;
+
+    if (!classroomId || !videoId) {
+      alert("Missing classroom or video ID");
+      return;
+    }
+
+    window.location.href = `/upload_material?classroom_id=${classroomId}&video_id=${videoId}`;
+  });
+
 
   // Helper Functions
   async function refreshSavedVoices() {
