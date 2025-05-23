@@ -198,8 +198,19 @@ class ViewAssignmentController:
 class UploadMaterialController:
     @staticmethod
     def upload_material(title, file, uploader, classroom_id, description, video_ids=None):
-        material = Material(title, file, uploader, description, classroom_id, video_ids=video_ids)
-        return material.save_material()
+        try:
+            material = Material(
+                title=title,
+                file=file,
+                uploader=uploader,
+                description=description,
+                classroom_id=classroom_id,
+                video_ids=video_ids  # ✅ pass it here
+            )
+            material.save_material()
+            return {"success": True, "message": "Material uploaded successfully."}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
 
     
 class ViewMaterialController:

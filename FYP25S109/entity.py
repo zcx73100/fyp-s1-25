@@ -761,15 +761,14 @@ class Material:
                 'title': self.title,
                 'file_id': file_id,
                 'file_name': filename,
-                'username': self.username,
-                'upload_date': datetime.now(),
+                'username': self.username,  # ✅ make sure this matches __init__
+                'upload_date': datetime.utcnow(),
                 'description': self.description,
-                'classroom_id': self.classroom_id,
+                'classroom_id': ObjectId(self.classroom_id),  # ✅ wrap if it's not already
             }
 
-            # ✅ Include video references if available
             if self.video_ids:
-                material_doc['video_ids'] = self.video_ids
+                material_doc['video_ids'] = self.video_ids  # ✅ already ObjectId list
 
             mongo.db.materials.insert_one(material_doc)
 
@@ -778,6 +777,7 @@ class Material:
         except Exception as e:
             logging.error(f"Error saving material: {str(e)}")
             return {"success": False, "message": str(e)}
+
 
     @staticmethod
     def get_material_by_id(material_id):
