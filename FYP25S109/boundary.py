@@ -2230,9 +2230,12 @@ class TeacherManageMaterialBoundary:
         description = request.form.get('description')
         file = request.files.get('file')
         video_ids = request.form.getlist('video_ids')  # ✅ Fix field name and support list
-
+        if not video_ids:
+            single_video_id = request.form.get("video_id")
+            if single_video_id:
+                video_ids = [single_video_id]
         if not file:
-            flash("Please upload a file. A video is optional.", "danger")
+            flash("Please upload a file.")
             return redirect(request.url)
 
         try:
@@ -2284,46 +2287,6 @@ class TeacherManageMaterialBoundary:
         video_id = request.args.get("video_id")
         return render_template("uploadMaterial.html", classroom_id=classroom_id, video_id=video_id)
 
-    @boundary.route("/publish_material_video", methods=["POST"])
-    def publish_material_video():
-        data = request.get_json()
-        gridfs_id = data.get("video_id")  # GridFS ID
-        classroom_id = data.get("classroom_id")
-
-        if not gridfs_id or not classroom_id:
-            return jsonify({"success": False, "error": "Missing video ID or classroom ID"}), 400
-
-        try:
-            # Check if already published
-            video_doc = mongo.db.material_video.find_one({"video_gridfs_id": ObjectId(gridfs_id)})
-
-            if not video_doc:
-                # If not found, look in tempvideo
-                temp_doc = mongo.db.tempvideo.find_one({"video_id": ObjectId(gridfs_id)})
-                if not temp_doc:
-                    return jsonify({"success": False, "error": "Video not found"}), 404
-
-                # Create new material video entry
-                video_doc = {
-                    "video_gridfs_id": ObjectId(gridfs_id),
-                    "uploaded_by": session.get("username"),
-                    "uploaded_at": datetime.utcnow(),
-                    "classroom_id": ObjectId(classroom_id),
-                    "title": "Teaching Material",
-                    "description": "Published by teacher"
-                }
-                mongo.db.material_video.insert_one(video_doc)
-
-                # Clean up tempvideo
-                mongo.db.tempvideo.delete_many({"video_id": ObjectId(gridfs_id)})
-
-            # Store reference if needed
-            video_doc = mongo.db.material_video.find_one({"video_gridfs_id": ObjectId(gridfs_id)})
-            session["stashed_video_id"] = str(video_doc["_id"])
-
-            return jsonify({"success": True})
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
 
     
     @boundary.route('/manage_materials/<classroom_id>', methods=['GET'])
