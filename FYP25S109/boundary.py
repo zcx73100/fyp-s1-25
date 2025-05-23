@@ -2229,7 +2229,7 @@ class TeacherManageMaterialBoundary:
         title = request.form.get('title')
         description = request.form.get('description')
         file = request.files.get('file')
-        video_id = request.form.get('video_id')  # from hidden input, optional
+        video_ids = request.form.getlist('video_ids')  # ✅ Fix field name and support list
 
         if not file:
             flash("Please upload a file. A video is optional.", "danger")
@@ -2244,28 +2244,30 @@ class TeacherManageMaterialBoundary:
                 "uploaded_at": datetime.utcnow()
             }
 
-            # ✅ Required: File upload
+            # ✅ File upload to GridFS
             fs = get_fs()
             file_id = fs.put(file, filename=file.filename)
             material_doc["file_id"] = file_id
             material_doc["file_name"] = file.filename
 
-            # ✅ Optional: Video attachment
-            if video_id:
-                material_doc["video_ids"] = [ObjectId(video_id)]
+            published_video_ids = []
 
-                # Move video from tempvideo to video collection
-                temp = mongo.db.tempvideo.find_one({"video_id": ObjectId(video_id)})
-                if temp:
-                    mongo.db.video.insert_one({
-                        "video_gridfs_id": ObjectId(video_id),
-                        "uploaded_by": session.get("username"),
-                        "classroom_id": ObjectId(classroom_id),
-                        "title": title,
-                        "description": "Auto-attached to material",
-                        "uploaded_at": datetime.utcnow()
-                    })
-                    mongo.db.tempvideo.delete_one({"video_id": ObjectId(video_id)})
+            for vid in video_ids:
+                try:
+                    vid_oid = ObjectId(vid)
+                    temp = mongo.db.tempvideo.find_one({"video_id": vid_oid})
+                    if temp:
+                        temp["is_published"] = True
+                        temp["published_at"] = datetime.utcnow()
+                        temp.pop("_id", None)
+                        mongo.db.generated_videos.insert_one(temp)
+                        mongo.db.tempvideo.delete_one({"video_id": vid_oid})
+                        published_video_ids.append(vid_oid)
+                except Exception as e:
+                    print(f"❌ Failed to publish video {vid}: {e}")
+
+            if published_video_ids:
+                material_doc["video_ids"] = published_video_ids
 
             mongo.db.materials.insert_one(material_doc)
             flash("Material uploaded successfully!", "success")
